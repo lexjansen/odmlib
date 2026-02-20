@@ -1,78 +1,101 @@
+import json
+from pathlib import Path
 
-class ValueSet:
-    _value_set = {
-        "MetaDataVersion.DefineVersion": ["2.0.0", "2.0", "2.1.0", "2.1"],
-        "ItemGroupDef.Class": ["SPECIAL PURPOSE", "FINDINGS", "EVENTS", "INTERVENTIONS", "TRIAL DESIGN", "RELATIONSHIP",
-                               "SUBJECT LEVEL ANALYSIS DATASET", "BASIC DATA STRUCTURE", "ADAM OTHER"],
-        "PDFPageRef.Type": ["NamedDestination", "PhysicalRef"],
-        "Origin.Type": ["CRF", "Derived", "Assigned", "Protocol", "eDT", "Predecessor"],
-        "RangeCheck.Comparator": ["LT", "LE", "GT", "GE", "EQ", "NE", "IN", "NOTIN"],
-        "RangeCheck.SoftHard": ["Soft", "Hard"],
-        "StudyEventDef.Repeating": ["Yes", "No"],
-        "CodeListItem.ExtendedValue": ["Yes"],
-        "EnumeratedItem.ExtendedValue": ["Yes"],
-        "FormDef.Repeating": ["Yes", "No"],
-        "ItemGroupDef.Repeating": ["Yes", "No"],
-        "ItemGroupDef.IsNonStandard": ["Yes"],
-        "ItemGroupDef.HasNoData": ["Yes"],
-        "FormRef.Mandatory": ["Yes", "No"],
-        "ItemGroupRef.Mandatory": ["Yes", "No"],
-        "ItemRef.Mandatory": ["Yes", "No"],
-        "ItemRef.IsNonStandard": ["Yes"],
-        "ItemRef.HasNoData": ["Yes"],
-        "StudyEventRef.Mandatory": ["Yes", "No"],
-        "ItemGroupDef.IsReferenceData": ["Yes", "No"],
-        "ItemDef.DataType": ["text", "integer", "float", "date", "time", "datetime", "string", "boolean", "double",
-                             "hexBinary", "base64Binary", "hexFloat", "base64Float", "partialDate", "partialTime",
-                             "partialDatetime", "durationDatetime", "intervalDatetime", "incompleteDatetime",
-                             "incompleteDate", "incompleteTime", "URI"],
-        "CodeList.DataType": ["integer", "float", "text", "string"],
-        "CodeList.IsNonStandard": ["Yes"],
-        "CodeList.CodeListExtensible": ["Yes", "No"],
-        "MethodDef.Type": ["Computation", "Imputation", "Transpose", "Other"],
-        "StudyEventDef.Type": ["Scheduled", "Unscheduled", "Common"],
-        "ODM.FileType": ["Snapshot", "Transactional"],
-        "ODM.Granularity": ["All", "Metadata", "AdminData", "ReferenceData", "AllClinicalData", "SingleSite",
-                            "SingleSubject"],
-        "ODM.Archival": ["Yes", "No"],
-        "ODM.ODMVersion": ["1.2", "1.2.1", "1.3", "1.3.1", "1.3.2"],
-        "ODM.Context": ["Submission", "Other"],
-        "User.UserType": ["Sponsor", "Investigator", "Lab", "Other"],
-        "Location.LocationType": ["Sponsor", "Site", "CRO", "Lab", "Other"],
-        "SignatureDef.Methodology": ["Digital", "Electronic"],
-        "SubjectData.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "StudyEventData.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "FormData.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "ItemGroupData.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "ItemData.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "Annotation.TransactionType": ["Insert", "Update", "Remove", "Upsert", "Context"],
-        "ItemData.IsNull": ["Yes"],
-        "AuditRecord.EditPoint": ["Monitoring", "DataManagement", "DBAudit"],
-        "AuditRecord.UsedImputationMethod": ["Yes", "No"],
-        "Comment.SponsorOrSite": ["Sponsor", "Site"],
-        "Country._content": ['AF', 'AL', 'DZ', 'AS', 'AD', 'AO', 'AI', 'AQ', 'AG', 'AR', 'AM', 'AW', 'AU', 'AT', 'AZ',
-                             'BS', 'BH', 'BD', 'BB', 'BY', 'BE', 'BZ', 'BJ', 'BM', 'BT', 'BO', 'BO', 'BA', 'BW', 'BV',
-                             'BR', 'IO', 'BN', 'BN', 'BG', 'BF', 'BI', 'KH', 'CM', 'CA', 'CV', 'KY', 'CF', 'TD', 'CL',
-                             'CN', 'CX', 'CC', 'CO', 'KM', 'CG', 'CD', 'CK', 'CR', 'CI', 'CI', 'HR', 'CU', 'CY', 'CZ',
-                             'DK', 'DJ', 'DM', 'DO', 'EC', 'EG', 'SV', 'GQ', 'ER', 'EE', 'ET', 'FK', 'FO', 'FJ', 'FI',
-                             'FR', 'GF', 'PF', 'TF', 'GA', 'GM', 'GE', 'DE', 'GH', 'GI', 'GR', 'GL', 'GD', 'GP', 'GU',
-                             'GT', 'GG', 'GN', 'GW', 'GY', 'HT', 'HM', 'VA', 'HN', 'HK', 'HU', 'IS', 'IN', 'ID', 'IR',
-                             'IQ', 'IE', 'IM', 'IL', 'IT', 'JM', 'JP', 'JE', 'JO', 'KZ', 'KE', 'KI', 'KP', 'KR', 'KR',
-                             'KW', 'KG', 'LA', 'LV', 'LB', 'LS', 'LR', 'LY', 'LY', 'LI', 'LT', 'LU', 'MO', 'MK', 'MG',
-                             'MW', 'MY', 'MV', 'ML', 'MT', 'MH', 'MQ', 'MR', 'MU', 'YT', 'MX', 'FM', 'MD', 'MC', 'MN',
-                             'ME', 'MS', 'MA', 'MZ', 'MM', 'MM', 'NA', 'NR', 'NP', 'NL', 'AN', 'NC', 'NZ', 'NI', 'NE',
-                             'NG', 'NU', 'NF', 'MP', 'NO', 'OM', 'PK', 'PW', 'PS', 'PA', 'PG', 'PY', 'PE', 'PH', 'PN',
-                             'PL', 'PT', 'PR', 'QA', 'RE', 'RO', 'RU', 'RU', 'RW', 'SH', 'KN', 'LC', 'PM', 'VC', 'VC',
-                             'VC', 'WS', 'SM', 'ST', 'SA', 'SN', 'RS', 'SC', 'SL', 'SG', 'SK', 'SI', 'SB', 'SO', 'ZA',
-                             'GS', 'SS', 'ES', 'LK', 'SD', 'SR', 'SJ', 'SZ', 'SE', 'CH', 'SY', 'TW', 'TW', 'TJ', 'TZ',
-                             'TH', 'TL', 'TG', 'TK', 'TO', 'TT', 'TN', 'TR', 'TM', 'TC', 'TV', 'UG', 'UA', 'AE', 'GB',
-                             'US', 'UM', 'UY', 'UZ', 'VU', 'VE', 'VE', 'VN', 'VN', 'VG', 'VI', 'WF', 'EH', 'YE', 'ZM',
-                             'ZW']
-    }
+
+class ValueSetLoader:
+    """Loads and caches valueset data from JSON file"""
+    _cache = None  # Class variable for singleton cache
+    _version_map = None  # Maps module paths to versions
 
     @classmethod
-    def value_set(cls, attribute):
-        if attribute in cls._value_set:
-            return cls._value_set[attribute]
+    def load_valuesets(cls):
+        """Load JSON once, cache in memory (lazy loading)"""
+        if cls._cache is None:
+            data_dir = Path(__file__).parent / 'data'
+            json_path = data_dir / 'valuesets.json'
+            with open(json_path, 'r') as f:
+                cls._cache = json.load(f)
+            cls._build_version_map()
+        return cls._cache
+
+    @classmethod
+    def _build_version_map(cls):
+        """Map module paths to version keys"""
+        cls._version_map = {
+            'odmlib.odm_1_3_2.model': 'odm_1_3_2',
+            'odmlib.odm_2_0.model': 'odm_2_0',
+            'odmlib.define_2_0.model': 'define_2_0',
+            'odmlib.define_2_1.model': 'define_2_1',
+            'odmlib.ct_1_1_1.model': 'ct_1_1_1',
+            'odmlib.dataset_1_0_1.model': 'dataset_1_0_1',
+            # Add test models
+            'tests.model_extended': 'odm_1_3_2',  # Test extension uses base
+        }
+
+    @classmethod
+    def get_version_for_module(cls, module_path):
+        """Determine version from module path"""
+        if cls._version_map is None:
+            cls.load_valuesets()
+
+        # Exact match
+        if module_path in cls._version_map:
+            return cls._version_map[module_path]
+
+        # Pattern matching for custom/local models
+        if 'odm_2_0' in module_path:
+            return 'odm_2_0'
+        elif 'define_2_1' in module_path:
+            return 'define_2_1'
+        elif 'define_2_0' in module_path:
+            return 'define_2_0'
+        elif 'ct_1_1_1' in module_path:
+            return 'ct_1_1_1'
+        elif 'dataset_1_0_1' in module_path:
+            return 'dataset_1_0_1'
+
+        # Default to odm_1_3_2 for backward compatibility
+        return 'odm_1_3_2'
+
+
+class ValueSet:
+    """Backward-compatible interface to valueset data"""
+
+    @classmethod
+    def value_set(cls, attribute, version=None, instance=None):
+        """
+        Get valid values for an attribute
+
+        Args:
+            attribute: "ClassName.AttributeName" format
+            version: Explicit version (e.g., "odm_2_0") - optional
+            instance: ODMElement instance for automatic version detection - optional
+
+        Returns:
+            List of valid values
+
+        Raises:
+            ValueError: If attribute not found in valueset
+        """
+        # Determine version
+        if version is None and instance is not None:
+            module_path = type(instance).__module__
+            version = ValueSetLoader.get_version_for_module(module_path)
+        elif version is None:
+            # Backward compatibility: default to odm_1_3_2
+            version = 'odm_1_3_2'
+
+        # Load valuesets (cached)
+        valuesets = ValueSetLoader.load_valuesets()
+
+        # Get version-specific valueset
+        if version not in valuesets:
+            raise ValueError(f"Unknown version {version} in ValueSet")
+
+        version_valueset = valuesets[version]
+
+        # Get attribute values
+        if attribute in version_valueset:
+            return version_valueset[attribute]
         else:
-            raise ValueError(f"Unknown value {attribute} in ValueSet. Unable to check value.")
+            raise ValueError(f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.")

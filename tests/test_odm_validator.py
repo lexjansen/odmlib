@@ -6,9 +6,8 @@ import odmlib.odm_parser as P
 class TestODMValidator(TestCase):
     def setUp(self) -> None:
         self.odm_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'cdash-odm-test.xml')
-        # set the file and path to point to the odm 1.3.2 schema on your system
-        odm_schema_file = os.path.join(os.sep, 'home', 'sam', 'standards', 'odm1-3-2', 'ODM1-3-2.xsd')
-        self.validator = P.ODMSchemaValidator(odm_schema_file)
+        # Use packaged ODM 1.3.2 schema bundled with odmlib
+        self.validator = P.ODMSchemaValidator(standard="odm", version="1.3.2")
 
     def test_validate_tree_valid(self):
         self.parser = P.ODMParser(self.odm_file)

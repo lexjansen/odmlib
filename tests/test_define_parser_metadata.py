@@ -27,7 +27,7 @@ class TestOdmParserMetaData(unittest.TestCase):
         self.assertDictEqual(self.mdv[0].attrib, mdv_dict)
         self.assertEqual(mdv_dict["{http://www.cdisc.org/ns/def/v2.0}DefineVersion"],
                          self.mdv[0].attrib["{http://www.cdisc.org/ns/def/v2.0}DefineVersion"])
-        self.assertEqual(769, len([e.tag for e in self.mdv[0].getchildren()]))
+        self.assertEqual(769, len([e.tag for e in self.mdv[0]]))
 
     def test_ItemGroupDef(self):
         ig = self.parser.ItemGroupDef(parent=self.mdv[0])

@@ -23,16 +23,16 @@ class Alias(OE.ODMElement):
     Name = T.String(required=True)
 
 
-class StudyDescription(OE.ODMElement):
-    Description = T.ODMObject(element_class=Description, required=True)
+# class StudyDescription(OE.ODMElement):
+#     Description = T.ODMObject(element_class=Description, required=True)
 
 
-class ProtocolName(OE.ODMElement):
-    _content = T.String(required=True)
-
-
-class StudyName(OE.ODMElement):
-    _content = T.String(required=True)
+# class ProtocolName(OE.ODMElement):
+#     _content = T.String(required=True)
+#
+#
+# class StudyName(OE.ODMElement):
+#     _content = T.String(required=True)
 
 
 class Include(OE.ODMElement):
@@ -52,6 +52,15 @@ class Protocol(OE.ODMElement):
     StudyEventRef = T.ODMListObject(element_class=StudyEventRef)
     Alias = T.ODMListObject(element_class=Alias)
 
+class ItemGroupRef(OE.ODMElement):
+    ItemGroupOID = T.OID(required=True)
+    OrderNumber = T.Integer(required=False)
+    Mandatory = T.ValueSetString(required=True)
+    CollectionExceptionConditionOID = T.OIDRef()
+
+class WorkflowRef(OE.ODMElement):
+    WorkflowOID = T.OID(required=True)
+
 
 class StudyEventDef(OE.ODMElement):
     """ represents ODM v2.0 StudyEventDef and can serialize as JSON or XML """
@@ -67,39 +76,22 @@ class StudyEventDef(OE.ODMElement):
 
     def __len__(self):
         """ returns the number of FormRefs in an StudyEventDef object as the length """
-        return len(self.FormRef)
+        return len(self.ItemGroupRef)
 
     def __getitem__(self, position):
         """
         creates an iterator from an StudyEventDef object that returns the FormRef in position
         """
-        return self.FormRef[position]
+        return self.ItemGroupRef[position]
 
     def __iter__(self):
-        return iter(self.FormRef)
-
-
-class ItemGroupRef(OE.ODMElement):
-    ItemGroupOID = T.OID(required=True)
-    OrderNumber = T.Integer(required=False)
-    Mandatory = T.ValueSetString(required=True)
-    CollectionExceptionConditionOID = T.OIDRef()
+        return iter(self.ItemGroupRef)
 
 
 class ArchiveLayout(OE.ODMElement):
     OID = T.OID(required=True)
     PdfFileName = T.FileName(required=True)
     PresentationOID = T.OIDRef(required=False)
-
-
-    def __len__(self):
-        return len(self.ItemGroupRef)
-
-    def __getitem__(self, position):
-        return self.ItemGroupRef[position]
-
-    def __iter__(self):
-        return iter(self.ItemGroupRef)
 
 
 class PDFPageRef(OE.ODMElement):
@@ -144,6 +136,8 @@ class ItemRef(OE.ODMElement):
     Role = T.String()
     RoleCodeListOID = T.String()
     CollectionExceptionConditionOID = T.String()
+    UnitsItemOID = T.String()
+    PreSpecifiedValue = T.String()
 
 
 class ItemGroupDef(OE.ODMElement):
@@ -328,10 +322,6 @@ class ExceptionEvent(OE.ODMElement):
     WorkflowRef = T.ODMObject(element_class=WorkflowRef)
     StudyEventGroupRef = T.ODMListObject(element_class=StudyEventGroupRef)
     StudyEventRef = T.ODMListObject(element_class=StudyEventRef)
-
-
-class WorkflowRef(OE.ODMElement):
-    WorkflowOID = T.OID(required=True)
 
 
 class Arm(OE.ODMElement):
@@ -624,7 +614,7 @@ class Study(OE.ODMElement):
     OID = T.String(required=True)
     StudyName = T.String(required=True)
     ProtocolName = T.String(required=True)
-    Description = T.ODMObject(required=True, element_class=Description)
+    Description = T.ODMObject(required=False, element_class=Description)
     MetaDataVersion = T.ODMListObject(required=False, element_class=MetaDataVersion)
 
 
@@ -642,11 +632,6 @@ class ODM(OE.ODMElement):
     Originator = T.String(required=False)
     SourceSystem = T.String(required=False)
     SourceSystemVersion = T.String(required=False)
-    ID = T.ID()
     Study = T.ODMListObject(element_class=Study)
-    AdminData = T.ODMListObject(element_class=AdminData)
-    #ReferenceData = T.ODMListObject(element_class=referencedata.ReferenceData)
-    #ClinicalData = T.ODMListObject(element_class=clinicaldata.ClinicalData)
-    #Association = T.ODMListObject(element_class=association.Association)
-    #ds_Signature = T.ODMListObject(element_class=dssignature.ds_Signature)
+    # AdminData = T.ODMListObject(element_class=AdminData)
 

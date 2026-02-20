@@ -3,6 +3,7 @@ import xmlschema as XSD
 import odmlib.ns_registry as NS
 from abc import ABC, abstractmethod
 import json
+from . import schema_manager as SM
 
 ODM_NS = {'odm': 'http://www.cdisc.org/ns/odm/v1.3'}
 ODM_PREFIX = "odm:"
@@ -25,7 +26,14 @@ class OdmlibSchemaValidationError(Exception):
 
 
 class ODMSchemaValidator(SchemaValidator):
-    def __init__(self, xsd_file):
+    def __init__(self, xsd_file=None, standard: str = "odm", version: str = "1.3.2"):
+        """Initialize the ODM schema validator.
+
+        If xsd_file is not provided, resolve the schema file from packaged schemas
+        using the provided standard and version.
+        """
+        if xsd_file is None:
+            xsd_file = SM.get_schema_path(standard, version)
         self.xsd = XSD.XMLSchema(xsd_file)
 
     def validate_tree(self, tree):
@@ -63,21 +71,32 @@ class BaseParser:
 
 class ElementParser:
     def __init__(self):
+        self.nsr = None
         self.root = None
         self.mdv = []
         self.admin_data = []
         self.clinical_data = []
 
+    def set_namespaces(self, ns_registry):
+        self.nsr = ns_registry
+
     def ODM(self):
         return self.root
 
     def Study(self):
-        study = self.root.findall(ODM_PREFIX + "Study", ODM_NS)
+        if self.nsr:
+            study = self.root.findall(ODM_PREFIX + "Study", self.nsr.default_namespace)
+        else:
+            study = self.root.findall(ODM_PREFIX + "Study", ODM_NS)
         return study
 
     def MetaDataVersion(self, idx=0):
-        study = self.root.findall(ODM_PREFIX + "Study", ODM_NS)
-        self.mdv = study[idx].findall(ODM_PREFIX + "MetaDataVersion", ODM_NS)
+        if self.nsr:
+            study = self.root.findall(ODM_PREFIX + "Study", self.nsr.default_namespace)
+            self.mdv = study[idx].findall(ODM_PREFIX + "MetaDataVersion", self.nsr.default_namespace)
+        else:
+            study = self.root.findall(ODM_PREFIX + "Study", ODM_NS)
+            self.mdv = study[idx].findall(ODM_PREFIX + "MetaDataVersion", ODM_NS)
         return self.mdv
 
     def AdminData(self):

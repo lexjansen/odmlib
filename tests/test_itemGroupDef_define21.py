@@ -44,6 +44,13 @@ class TestItemGroupDef(TestCase):
         self.assertEqual(self.igd.Class.Name, "FINDINGS")
         self.assertEqual(self.igd.Class.SubClass[0].ParentClass, "FINDINGS")
 
+    def test_add_send_class(self):
+        attrs = self.set_itemgroupdef_attributes()
+        igd = DEFINE.ItemGroupDef(**attrs)
+        def_class = DEFINE.Class(Name="STUDY REFERENCE")
+        igd.Class = def_class
+        self.assertEqual(igd.Class.Name, "STUDY REFERENCE")
+
     def test_add_description(self):
         tt1 = DEFINE.TranslatedText(_content="this is the first test description", lang="en")
         tt2 = DEFINE.TranslatedText(_content="this is the second test description", lang="en")
@@ -100,7 +107,7 @@ class TestItemGroupDef(TestCase):
         igd.ItemRef = [ir1, ir2]
         igd_xml = igd.to_xml()
         self.assertEqual(igd_xml.attrib["OID"], "IG.VS")
-        self.assertListEqual(["Description", "ItemRef", "ItemRef"], [e.tag for e in igd_xml.getchildren()])
+        self.assertListEqual(["Description", "ItemRef", "ItemRef"], [e.tag for e in igd_xml])
 
     def test_itemgroupdef_parse_xml(self):
         parser = ODM_PARSER.ODMParser(self.input_file, self.nsr)
@@ -279,4 +286,5 @@ class TestItemGroupDef(TestCase):
     @staticmethod
     def set_datetime():
         """return the current datetime in ISO 8601 format"""
-        return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        # return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()

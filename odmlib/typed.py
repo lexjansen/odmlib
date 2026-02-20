@@ -272,9 +272,15 @@ class FileName(DESC.Descriptor):
 
 class ValidValues(DESC.Descriptor):
     def __set__(self, instance, value):
-        if (value is not None) and value not in VS.ValueSet.value_set(type(instance).__name__ + "." + self.name):
-            raise TypeError(f"Invalid value {value} for {self.name}. Value must be one of "
-                            f"{', '.join(VS.ValueSet.value_set(self.name))}")
+        if (value is not None):
+            # Pass instance for automatic version detection
+            valid_values = VS.ValueSet.value_set(
+                type(instance).__name__ + "." + self.name,
+                instance=instance
+            )
+            if value not in valid_values:
+                raise TypeError(f"Invalid value {value} for {self.name}. Value must be one of "
+                                f"{', '.join(valid_values)}")
         super().__set__(instance, value)
 
 

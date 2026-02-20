@@ -10,7 +10,7 @@ ODM_JSON_FILE = "./data/ae_test.json"
 
 class TestCreateDataset(unittest.TestCase):
     def setUp(self) -> None:
-        current_datetime = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).isoformat()
         self.root = ODM.ODM(FileOID="ODM.DATASET.001", AsOfDateTime=current_datetime, DatasetXMLVersion="1.0.0",
                        CreationDateTime=current_datetime, ODMVersion="1.3.2", FileType="Snapshot",
                        Originator="swhume", SourceSystem="odmlib", SourceSystemVersion="0.1")

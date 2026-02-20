@@ -68,14 +68,19 @@ class DictODMLoader(JSONODMLoader):
 
 
 class XMLODMLoader(DL.DocumentLoader):
-    def __init__(self, model_package="odm_1_3_2", ns_uri="http://www.cdisc.org/ns/odm/v1.3", local_model=False):
+    def __init__(self, model_package="odm_1_3_2", ns_uri="http://www.cdisc.org/ns/odm/v1.3", local_model=False, nsr=None):
         self.filename = None
         self.parser = None
+        self.nsr = None
         if local_model:
             self.ODM = importlib.import_module(f"{model_package}.model")
         else:
             self.ODM = importlib.import_module(f"odmlib.{model_package}.model")
-        self.nsr = NS.NamespaceRegistry()
+        if nsr:
+            self._set_namespace(nsr)
+        else:
+            # self.nsr = NS.NamespaceRegistry()
+            self._set_namespace(None)
 
     def load_document(self, elem, *args):
         elem_name = elem.tag[elem.tag.find('}') + 1:]
@@ -103,7 +108,8 @@ class XMLODMLoader(DL.DocumentLoader):
 
     def create_document(self, filename, namespace_registry=None):
         self.filename = filename
-        self._set_namespace(namespace_registry)
+        if namespace_registry is not None:
+            self._set_namespace(namespace_registry)
         self.parser = P.ODMParser(self.filename, self.nsr)
         root = self.parser.parse()
         return root
@@ -115,7 +121,7 @@ class XMLODMLoader(DL.DocumentLoader):
         return root
 
     def _set_namespace(self, namespace_registry):
-        if namespace_registry:
+        if namespace_registry is not None:
             self.nsr = namespace_registry
         else:
             self.nsr = NS.NamespaceRegistry(prefix="odm", uri="http://www.cdisc.org/ns/odm/v1.3", is_default=True)
@@ -126,11 +132,13 @@ class XMLODMLoader(DL.DocumentLoader):
         return root_odmlib
 
     def load_metadataversion(self, idx=0):
+        self.parser.set_namespaces(self.nsr)
         mdv = self.parser.MetaDataVersion()
         mdv_odmlib = self.load_document(mdv[idx])
         return mdv_odmlib
 
     def load_study(self, idx=0):
+        self.parser.set_namespaces(self.nsr)
         study = self.parser.Study()
         study_odmlib = self.load_document(study[idx])
         return study_odmlib
