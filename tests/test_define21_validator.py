@@ -30,7 +30,7 @@ class TestODMValidator(TestCase):
         try:
             self.validator.validate_file(define_file)
         except xmlschema.validators.exceptions.XMLSchemaValidatorError as ex:
-            self.assertIn("invalid value 'NONSENSE'", ex.reason)
+            self.assertIn("attribute Name='NONSENSE': value must be one of", ex.reason)
 
     def test_validate_file_send_class(self):
         define_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data',

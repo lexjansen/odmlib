@@ -4,7 +4,7 @@ import odmlib.typed as T
 import odmlib.odm_element as OE
 
 
-class TestText(OE.ODMElement):
+class TextModel(OE.ODMElement):
     Name = T.String(required=True)
     OrderNumber = T.PositiveInteger(required=False)
 
@@ -12,12 +12,12 @@ class TestText(OE.ODMElement):
 class TestDescriptor(unittest.TestCase):
 
     def test_assignment(self):
-        test = TestText(Name="test name", OrderNumber="1")
+        test = TextModel(Name="test name", OrderNumber="1")
         self.assertEqual(test.Name, "test name")
         with self.assertRaises(TypeError):
             test.OID = None
-        TestText.Name = "VariableOne"
-        self.assertEqual(TestText.Name, "VariableOne")
+        TextModel.Name = "VariableOne"
+        self.assertEqual(TextModel.Name, "VariableOne")
 
     def test_get_missing_attribute(self):
         igd = ODM.ItemGroupDef(OID="IG.VS", Name="Vital Signs", Repeating="Yes")

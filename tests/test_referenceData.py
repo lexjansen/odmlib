@@ -99,4 +99,5 @@ class TestReferenceData(TestCase):
 
     def set_datetime(self):
         """return the current datetime in ISO 8601 format"""
-        return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        # return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()

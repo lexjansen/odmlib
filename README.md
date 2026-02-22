@@ -17,36 +17,38 @@ The odmlib package satisfies my personal interest in working with ODM using an o
 interface in Python.
 
 ## Getting Started
-Since odmlib is still in development the best way to proceed is to clone the odmlib 
-repository, switch to the odmlib directory, and run 
 
-`python setup.py install` 
+### Installation
 
-Alternatively, for those that may want to contribute to the development of odmlib, run
+Install from PyPI:
 
-`python setup.py develop`
+```bash
+pip install odmlib
+```
 
-For those running PyCharm on Windows, here are the steps to install odmlib for development:
-1. switch to venv\scripts
-2. run activate.bat
-3. switch to odmlib directory
-4. run: python setup.py develop
+For development (editable install with all dev tools):
 
-When running PyCharm on Linux:
-1. switch to venv/bin
-2. run activate (set permissions if needed)
-3. switch to odmlib directory
-4. run: python setup.py develop
+```bash
+git clone https://github.com/swhume/odmlib.git
+cd odmlib
+pip install -e ".[dev]"
+```
 
-The odmlib package requires that some packages be installed:
-* validators
-* pathvalidate
-* cerberus
+### Running Tests
 
-Although odmlib is still under development, a version of odmlib is available on PyPI. Although not the most 
-up-to-date, it’s the easiest to install:
+```bash
+# Run all tests
+python -m pytest tests/ -v
 
-`pip install odmlib`
+# Run with coverage report
+python -m pytest tests/ --cov=odmlib --cov-report=term-missing
+
+# Run a specific test file
+python -m pytest tests/test_odm_loader.py -v
+
+# Alternatively, using unittest directly
+python -m unittest discover tests -v
+```
 
 ## Example Code
 Example code is available in the [odmlib_examples repository](https://github.com/swhume/odmlib_examples) 

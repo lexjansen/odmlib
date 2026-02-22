@@ -5,8 +5,7 @@ import datetime
 import odmlib.typed as T
 import odmlib.odm_element as OE
 
-
-class TestText(OE.ODMElement):
+class TextModel(OE.ODMElement):
     Name = T.String(required=True)
     Label = T.Sized(required=True, max_length=4)
     Range = T.Regex(required=False, pat="[0-4]-[0-9]")
@@ -16,7 +15,7 @@ class TestText(OE.ODMElement):
     TestTime = T.IncompleteTimeString(required=False)
 
 
-class TestPartialDate(OE.ODMElement):
+class PartialDateModel(OE.ODMElement):
     Name = T.String(required=True)
     TestDateTime = T.PartialDateTimeString(required=False)
     TestDate = T.PartialDateString(required=False)
@@ -226,7 +225,8 @@ class TestTyped(unittest.TestCase):
 
     def set_datetime(self):
         """return the current datetime in ISO 8601 format"""
-        return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        # return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()
 
     def test_string_type(self):
         attrs = {"OID": "ODM.IT.AE.AEYN", "Name": "Any AEs?", "DataType": "text", "Length": 1, "SASFieldName": "AEYN",
@@ -242,25 +242,25 @@ class TestTyped(unittest.TestCase):
         self.assertIsNone(item.Origin)
 
     def test_sized_type(self):
-        sized = TestText(Name="AETERM", Label="help")
+        sized = TextModel(Name="AETERM", Label="help")
         self.assertEqual(sized.Label, "help")
         # too long
         with self.assertRaises(ValueError):
-            sized = TestText(Name="AETERM", Label="Verbatim Term")
+            sized = TextModel(Name="AETERM", Label="Verbatim Term")
 
     def test_regex_type(self):
-        regex = TestText(Name="AETERM", Label="help", Range="4-9")
+        regex = TextModel(Name="AETERM", Label="help", Range="4-9")
         self.assertEqual(regex.Range, "4-9")
         # not a match
         with self.assertRaises(ValueError):
-            regex = TestText(Name="AETERM", Label="help", Range="6-7")
+            regex = TextModel(Name="AETERM", Label="help", Range="6-7")
 
     def test_url_type(self):
-        url = TestText(Name="AETERM", Label="help", Range="4-9", Link="https://cdisc.org")
+        url = TextModel(Name="AETERM", Label="help", Range="4-9", Link="https://cdisc.org")
         self.assertEqual(url.Link, "https://cdisc.org")
         # not a match
         with self.assertRaises(ValueError):
-            url = TestText(Name="AETERM", Label="help", Range="4-9", Link="cdisc.org")
+            url = TextModel(Name="AETERM", Label="help", Range="4-9", Link="cdisc.org")
 
     def test_filename_type(self):
         archive = ODM.ArchiveLayout(OID="AL.AECRF", PdfFileName="ae_annotated_crf.pdf")
@@ -277,70 +277,70 @@ class TestTyped(unittest.TestCase):
 
     def test_incomplete_datetime_type(self):
         # valid incomplete datetime 2004-12-01T01:01:01Z and 2004---15T-:05:-
-        idatetime = TestText(Name="AETERM", Label="help", Range="4-9", TestDateTime="2004-12-01T01:01:01Z")
+        idatetime = TextModel(Name="AETERM", Label="help", Range="4-9", TestDateTime="2004-12-01T01:01:01Z")
         self.assertEqual(idatetime.TestDateTime, "2004-12-01T01:01:01Z")
-        idatetime = TestText(Name="AETERM", Label="help", Range="4-9", TestDateTime="2004---15T-:05:-")
+        idatetime = TextModel(Name="AETERM", Label="help", Range="4-9", TestDateTime="2004---15T-:05:-")
         self.assertEqual(idatetime.TestDateTime, "2004---15T-:05:-")
         # invalid incomplete datetime
         with self.assertRaises(ValueError):
-            idatetime = TestText(Name="AETERM", Label="help", Range="4-7", TestDateTime="2004---15T-:05")
+            idatetime = TextModel(Name="AETERM", Label="help", Range="4-7", TestDateTime="2004---15T-:05")
 
     def test_incomplete_date_type(self):
         # valid incomplete date 2004-12-20 and 2004---15 and ------
-        idate = TestText(Name="AETERM", Label="help", Range="4-9", TestDate="2004-12-20")
+        idate = TextModel(Name="AETERM", Label="help", Range="4-9", TestDate="2004-12-20")
         self.assertEqual(idate.TestDate, "2004-12-20")
-        idate = TestText(Name="AETERM", Label="help", Range="4-9", TestDate="2004---15")
+        idate = TextModel(Name="AETERM", Label="help", Range="4-9", TestDate="2004---15")
         self.assertEqual(idate.TestDate, "2004---15")
-        idate = TestText(Name="AETERM", Label="help", Range="4-7", TestDate="-----")
+        idate = TextModel(Name="AETERM", Label="help", Range="4-7", TestDate="-----")
         self.assertEqual(idate.TestDate, "-----")
         # invalid incomplete date
         with self.assertRaises(ValueError):
-            idate = TestText(Name="AETERM", Label="help", Range="4-7", TestDate="----32")
+            idate = TextModel(Name="AETERM", Label="help", Range="4-7", TestDate="----32")
 
     def test_incomplete_time_type(self):
         # valid incomplete time 2004-12-01T01:01:01Z and 2004---15T-:05:-
-        itime = TestText(Name="AETERM", Label="help", Range="4-9", TestTime="01:01:01Z")
+        itime = TextModel(Name="AETERM", Label="help", Range="4-9", TestTime="01:01:01Z")
         self.assertEqual(itime.TestTime, "01:01:01Z")
-        itime = TestText(Name="AETERM", Label="help", Range="4-9", TestTime="-:05:-")
+        itime = TextModel(Name="AETERM", Label="help", Range="4-9", TestTime="-:05:-")
         self.assertEqual(itime.TestTime, "-:05:-")
         # invalid incomplete datetime
         with self.assertRaises(ValueError):
-            itime = TestText(Name="AETERM", Label="help", Range="4-7", TestTime="-:05")
+            itime = TextModel(Name="AETERM", Label="help", Range="4-7", TestTime="-:05")
 
     def test_partial_datetime_type(self):
         # valid partial datetime
-        pdatetime = TestPartialDate(Name="AETERM", TestDateTime="2004-12-01T01:01:01Z")
+        pdatetime = PartialDateModel(Name="AETERM", TestDateTime="2004-12-01T01:01:01Z")
         self.assertEqual(pdatetime.TestDateTime, "2004-12-01T01:01:01Z")
-        pdatetime = TestPartialDate(Name="AETERM", TestDateTime="2004-12")
+        pdatetime = PartialDateModel(Name="AETERM", TestDateTime="2004-12")
         self.assertEqual(pdatetime.TestDateTime, "2004-12")
-        pdatetime = TestPartialDate(Name="AETERM", TestDateTime="2004-12-05T12")
+        pdatetime = PartialDateModel(Name="AETERM", TestDateTime="2004-12-05T12")
         self.assertEqual(pdatetime.TestDateTime, "2004-12-05T12")
         # invalid partial datetime
         with self.assertRaises(ValueError):
-            pdatetime = TestText(Name="AETERM", TestDateTime="2004---15T-:05")
+            pdatetime = PartialDateModel(Name="AETERM", TestDateTime="2004---15T-:05")
 
     def test_partial_date_type(self):
         # valid partial date
-        pdate = TestPartialDate(Name="AETERM", TestDate="2004-12-20")
+        pdate = PartialDateModel(Name="AETERM", TestDate="2004-12-20")
         self.assertEqual(pdate.TestDate, "2004-12-20")
-        pdate = TestPartialDate(Name="AETERM", TestDate="2004-12")
+        pdate = PartialDateModel(Name="AETERM", TestDate="2004-12")
         self.assertEqual(pdate.TestDate, "2004-12")
-        pdate = TestPartialDate(Name="AETERM", TestDate="2004")
+        pdate = PartialDateModel(Name="AETERM", TestDate="2004")
         self.assertEqual(pdate.TestDate, "2004")
         # invalid partial date
         with self.assertRaises(ValueError):
-            pdate = TestPartialDate(Name="AETERM", TestDate="----20")
+            pdate = PartialDateModel(Name="AETERM", TestDate="----20")
         with self.assertRaises(ValueError):
-            pdate = TestPartialDate(Name="AETERM", TestDate="2004-13-20")
+            pdate = PartialDateModel(Name="AETERM", TestDate="2004-13-20")
 
     def test_partial_time_type(self):
         # valid partial time
-        ptime = TestPartialDate(Name="AETERM", TestTime="01:01:01Z")
+        ptime = PartialDateModel(Name="AETERM", TestTime="01:01:01Z")
         self.assertEqual(ptime.TestTime, "01:01:01Z")
-        ptime = TestPartialDate(Name="AETERM", TestTime="12:05")
+        ptime = PartialDateModel(Name="AETERM", TestTime="12:05")
         self.assertEqual(ptime.TestTime, "12:05")
-        ptime = TestPartialDate(Name="AETERM", TestTime="12")
+        ptime = PartialDateModel(Name="AETERM", TestTime="12")
         self.assertEqual(ptime.TestTime, "12")
         # invalid partial datetime
         with self.assertRaises(ValueError):
-            ptime = TestPartialDate(Name="AETERM", TestTime="-:05")
+            ptime = PartialDateModel(Name="AETERM", TestTime="-:05")
