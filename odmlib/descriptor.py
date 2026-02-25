@@ -1,3 +1,4 @@
+from odmlib.exceptions import OdmlibRequiredAttributeError
 
 
 class Descriptor:
@@ -12,7 +13,12 @@ class Descriptor:
         if instance is None:
             return self
         elif (self.name not in instance.__dict__) and (self.name != self.__dict__["name"]):
-            raise ValueError(f"Missing attribute or element {self.name} in {cls.__name__}")
+            raise OdmlibRequiredAttributeError(
+                f"Missing attribute or element {self.name} in {cls.__name__}",
+                attribute=self.name,
+                element_type=cls.__name__,
+                hint=f"Attribute '{self.name}' is required when constructing {cls.__name__}",
+            )
         else:
             if self.name not in instance.__dict__:
                 if isinstance(self, list):

@@ -1,11 +1,18 @@
 from unittest import TestCase
 import odmlib.define_loader as OL
 import odmlib.loader as LD
+import odmlib.ns_registry as NS
 import os
 
 
 class TestDefineLoaderString(TestCase):
     def setUp(self) -> None:
+        # Register the Define-XML 2.0 namespace set required for write_xml() round-trips.
+        # The autouse conftest fixture resets to only the base odm namespace.
+        NS.NamespaceRegistry(prefix="def",   uri="http://www.cdisc.org/ns/def/v2.0")
+        NS.NamespaceRegistry(prefix="xs",    uri="http://www.w3.org/2001/XMLSchema-instance")
+        NS.NamespaceRegistry(prefix="xml",   uri="http://www.w3.org/XML/1998/namespace")
+        NS.NamespaceRegistry(prefix="xlink", uri="http://www.w3.org/1999/xlink")
         self.odm_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'define2-0-0-sdtm-test.xml')
         with open(self.odm_file, "r", encoding="utf-8") as f:
             self.odm_string = f.read()

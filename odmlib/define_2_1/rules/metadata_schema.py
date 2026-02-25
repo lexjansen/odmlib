@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from cerberus import schema_registry, validator
+from odmlib.exceptions import OdmlibConformanceError
 
 
 class ConformanceChecker(ABC):
@@ -19,7 +20,12 @@ class MetadataSchema(ConformanceChecker):
         v = validator.Validator(schema)
         is_valid = v.validate(doc)
         if not is_valid:
-            raise ValueError(v.errors)
+            raise OdmlibConformanceError(
+                f"Conformance validation failed for {schema_name}: {v.errors}",
+                cerberus_errors=v.errors,
+                element_type=schema_name,
+                hint="Review the cerberus_errors attribute for a field-by-field breakdown",
+            )
         return is_valid
 
     @staticmethod

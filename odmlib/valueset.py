@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from odmlib.exceptions import OdmlibValidationError
 
 
 class ValueSetLoader:
@@ -90,7 +91,10 @@ class ValueSet:
 
         # Get version-specific valueset
         if version not in valuesets:
-            raise ValueError(f"Unknown version {version} in ValueSet")
+            raise OdmlibValidationError(
+                f"Unknown version {version} in ValueSet",
+                hint=f"Valid versions are: {list(valuesets.keys())}",
+            )
 
         version_valueset = valuesets[version]
 
@@ -98,4 +102,7 @@ class ValueSet:
         if attribute in version_valueset:
             return version_valueset[attribute]
         else:
-            raise ValueError(f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.")
+            raise OdmlibValidationError(
+                f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.",
+                hint=f"Attribute '{attribute}' is not defined in the value set for {version}",
+            )

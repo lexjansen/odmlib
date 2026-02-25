@@ -5,6 +5,7 @@ import odmlib.ns_registry as NS
 import json
 import importlib
 import xml.etree.ElementTree as ET
+from odmlib.exceptions import OdmlibLoaderStateError
 
 ODM_PREFIX = "odm:"
 ODM_NS = {'odm': 'http://www.cdisc.org/ns/odm/v1.3'}
@@ -44,20 +45,29 @@ class JSONODMLoader(DL.DocumentLoader):
 
     def load_odm(self):
         if not self.odm_dict:
-            raise ValueError("create_document must be used to creat the document before executing load_odm")
+            raise OdmlibLoaderStateError(
+                "create_document must be used to create the document before executing load_odm",
+                hint="Call loader.open_odm_document(filename) or loader.load_odm_string(json_string) first",
+            )
         odm_odmlib = self.load_document(self.odm_dict, "ODM")
         return odm_odmlib
 
     def load_metadataversion(self, idx=0):
         if not self.odm_dict:
-            raise ValueError("create_document must be used to create the document before executing load_metadataversion")
+            raise OdmlibLoaderStateError(
+                "create_document must be used to create the document before executing load_metadataversion",
+                hint="Call loader.open_odm_document(filename) first",
+            )
         mdv_dict = self.odm_dict["Study"][0]["MetaDataVersion"][idx]
         mdv_odmlib = self.load_document(mdv_dict, "MetaDataVersion")
         return mdv_odmlib
 
     def load_study(self, idx=0):
         if not self.odm_dict:
-            raise ValueError("create_document must be used to create the document before executing load_metadataversion")
+            raise OdmlibLoaderStateError(
+                "create_document must be used to create the document before executing load_study",
+                hint="Call loader.open_odm_document(filename) first",
+            )
         study_dict = self.odm_dict["Study"][idx]
         study_odmlib = self.load_document(study_dict, "Study")
         return study_odmlib

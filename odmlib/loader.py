@@ -1,11 +1,17 @@
 import odmlib.document_loader as DL
+from odmlib.exceptions import OdmlibTypeError
 
 
 class ODMLoader:
     """ loads an ODM-XML document into the object model """
     def __init__(self, odm_loader):
         if not isinstance(odm_loader, DL.DocumentLoader):
-            raise TypeError("odm_loader argument must implement DocumentLoader")
+            raise OdmlibTypeError(
+                "odm_loader argument must implement DocumentLoader",
+                expected_type="DocumentLoader",
+                actual_value=type(odm_loader).__name__,
+                hint="Pass an instance of XMLODMLoader, JSONODMLoader, XMLDefineLoader, or JSONDefineLoader",
+            )
         self.loader = odm_loader
 
     def create_odmlib(self, odm_doc, odm_key=None):

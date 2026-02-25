@@ -1,5 +1,6 @@
 from unittest import TestCase
 import odmlib.odm_1_3_2.model as ODM
+import odmlib.ns_registry as NS
 import datetime
 import xml.etree.ElementTree as ET
 import os
@@ -9,6 +10,12 @@ import odmlib.loader as LD
 
 class TestODM(TestCase):
     def setUp(self) -> None:
+        # Register the full ODM 1.3.2 namespace set required for write_xml() round-trips.
+        # The autouse conftest fixture resets to only the base odm namespace, so we
+        # explicitly re-register xs, xml, and xlink here.
+        NS.NamespaceRegistry(prefix="xs",    uri="http://www.w3.org/2001/XMLSchema-instance")
+        NS.NamespaceRegistry(prefix="xml",   uri="http://www.w3.org/XML/1998/namespace")
+        NS.NamespaceRegistry(prefix="xlink", uri="http://www.w3.org/1999/xlink")
         self.odm = self.add_root()
         self.odm_test_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_odm_001.xml')
         self.odm_writer_test_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_odm_002.xml')

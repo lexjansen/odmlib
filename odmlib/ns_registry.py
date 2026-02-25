@@ -1,4 +1,5 @@
 import validators
+from odmlib.exceptions import OdmlibNamespaceError
 
 
 class Borg:
@@ -20,7 +21,10 @@ class NamespaceRegistry(Borg):
             if validators.url(uri):
                 self._update_registry(prefix, uri, is_default)
             else:
-                raise ValueError(f"Namespace uri is not a valid url: {uri}")
+                raise OdmlibNamespaceError(
+                    f"Namespace uri is not a valid url: {uri}",
+                    hint="Provide a valid URI, e.g., 'http://www.cdisc.org/ns/odm/v1.3'",
+                )
 
     def get_odm_namespace_entries(self):
         entries = ["xmlns=" + list(self.default_namespace.values())[0]]
@@ -42,13 +46,19 @@ class NamespaceRegistry(Borg):
             else:
                 return "{" + self.namespaces[prefix] + "}" + name
         else:
-            raise ValueError(f"Error: Namespace with prefix {prefix} has not been registered")
+            raise OdmlibNamespaceError(
+                f"Error: Namespace with prefix {prefix} has not been registered",
+                hint=f"Register the namespace first: NamespaceRegistry(prefix='{prefix}', uri='...')",
+            )
 
     def get_prefix_ns_from_uri(self, uri):
         for prefix, ns_uri in self.namespaces.items():
             if uri.lower() == ns_uri.lower():
                 return prefix
-        raise ValueError(f"Error: Namespace with URI {uri} has not been registered")
+        raise OdmlibNamespaceError(
+            f"Error: Namespace with URI {uri} has not been registered",
+            hint="Register the namespace URI first via NamespaceRegistry(prefix=..., uri=...)",
+        )
 
     def set_odm_namespace_attributes(self, odm_elem):
         """ add NS attributes to the ODM XML element object """

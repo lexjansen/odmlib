@@ -1,5 +1,6 @@
 import os
 from importlib import resources
+from odmlib.exceptions import OdmlibValidationError
 
 # Map main schema filenames by standard/version
 _MAIN_SCHEMA = {
@@ -34,7 +35,10 @@ def get_schema_path(standard: str, version: str, filename: str | None = None) ->
         try:
             filename = _MAIN_SCHEMA[(standard, version)]
         except KeyError as ex:
-            raise ValueError(f"Unknown standard/version: {(standard, version)}") from ex
+            raise OdmlibValidationError(
+                f"Unknown standard/version: {(standard, version)}",
+                hint=f"Valid combinations are: {list(_MAIN_SCHEMA.keys())}",
+            ) from ex
 
     package = f"odmlib.schemas.{standard}.{version}"
     try:

@@ -4,7 +4,16 @@ import odmlib.ns_registry as NS
 import odmlib.oid_index as IDX
 from collections import OrderedDict
 import json
+import warnings
 import xml.etree.ElementTree as ET
+from odmlib.exceptions import (
+    OdmlibError,
+    OdmlibTypeError,
+    OdmlibRequiredAttributeError,
+    OdmlibElementOrderError,
+    OdmlibWarning,
+    ErrorCollector,
+)
 
 
 class ODMMeta(type):
@@ -78,16 +87,31 @@ class ODMElement(metaclass=ODMMeta):
                 if "}" in name:
                     name = name[name.find('}') + 1:]
                 else:
-                    raise TypeError(f"Unknown keyword argument {name} in {self.__class__.__name__}")
+                    raise OdmlibTypeError(
+                        f"Unknown keyword argument {name} in {self.__class__.__name__}",
+                        attribute=name,
+                        element_type=self.__class__.__name__,
+                        hint=f"Valid attributes for {self.__class__.__name__}: "
+                             f"{', '.join(k for k in self.__class__.__dict__ if not k.startswith('_'))}",
+                    )
             setattr(self, name, val)
         for attr, obj in self.__class__.__dict__.items():
             if isinstance(obj, DESC.Descriptor) and (not isinstance(obj, T.ODMObject)) and (attr not in self.__dict__) and obj.required:
-                raise ValueError(f"Missing required keyword argument {attr} in {self.__class__.__name__}")
+                raise OdmlibRequiredAttributeError(
+                    f"Missing required keyword argument {attr} in {self.__class__.__name__}",
+                    attribute=attr,
+                    element_type=self.__class__.__name__,
+                    hint=f"Attribute '{attr}' is required when constructing {self.__class__.__name__}",
+                )
 
     def __setattr__(self, key, value):
         """ ensure the object being added is a type that belongs to the class """
         if not hasattr(self, key):
-            raise TypeError(f"Assignment error: {self.__class__.__name__} does not have a defined attribute {key}")
+            raise OdmlibTypeError(
+                f"Assignment error: {self.__class__.__name__} does not have a defined attribute {key}",
+                attribute=key,
+                element_type=self.__class__.__name__,
+            )
         super().__setattr__(key, value)
 
     def to_json(self):
@@ -284,7 +308,12 @@ class ODMElement(metaclass=ODMMeta):
         obj_list = [key for key in list(self.__dict__.keys()) if key != "_content" and key not in self._attrs]
         elem_list = [elem for elem in self._elems if elem in obj_list]
         if obj_list != elem_list:
-            raise ValueError(f"The order of elements in {self.__class__.__name__} should be {', '.join([key for key in self._elems.keys()])}")
+            raise OdmlibElementOrderError(
+                f"The order of elements in {self.__class__.__name__} should be "
+                f"{', '.join(key for key in self._elems.keys())}",
+                element_type=self.__class__.__name__,
+                hint="Use reorder_object() to fix element ordering automatically",
+            )
         for attr, obj in odm_content.items():
             if isinstance(obj, ODMElement):
                 obj.verify_order()
@@ -294,6 +323,12 @@ class ODMElement(metaclass=ODMMeta):
         return True
 
     def reorder_object(self):
+        warnings.warn(
+            f"{self.__class__.__name__} elements are being reordered to match the ODM specification. "
+            "Use verify_order() before reorder_object() to understand the ordering issue.",
+            OdmlibWarning,
+            stacklevel=2,
+        )
         ordered_obj = OrderedDict()
         for model_elem_name, model_elem_obj in self._elems.items():
             if model_elem_name in self.__dict__:
@@ -301,4 +336,50 @@ class ODMElement(metaclass=ODMMeta):
                 ordered_obj[model_elem_name] = obj
         for name, elem in ordered_obj.items():
             self.__dict__[name] = elem
+
+    def validate(self, collect_errors=False, oid_checker=None, conformance_checker=None):
+        """Validate this element and all children.
+
+        Args:
+            collect_errors: If True, accumulate all errors and return them as a
+                list instead of raising on the first failure. Defaults to False
+                (fail-fast, existing behaviour).
+            oid_checker: Optional OIDRef instance for OID validation.
+            conformance_checker: Optional MetadataSchema instance for
+                conformance validation.
+
+        Returns:
+            If ``collect_errors=False``: ``True`` (or raises on first error).
+            If ``collect_errors=True``: list of :class:`~odmlib.exceptions.OdmlibError`
+            instances (empty list means valid).
+        """
+        if not collect_errors:
+            # Fail-fast — preserves existing behaviour exactly
+            self.verify_order()
+            if oid_checker:
+                self.verify_oids(oid_checker)
+            if conformance_checker:
+                self.verify_conformance(conformance_checker)
+            return True
+
+        collector = ErrorCollector()
+
+        try:
+            self.verify_order()
+        except OdmlibError as e:
+            collector.add_error(e)
+
+        if oid_checker:
+            try:
+                self.verify_oids(oid_checker)
+            except OdmlibError as e:
+                collector.add_error(e)
+
+        if conformance_checker:
+            try:
+                self.verify_conformance(conformance_checker)
+            except OdmlibError as e:
+                collector.add_error(e)
+
+        return collector.errors
 
