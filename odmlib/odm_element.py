@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Any, Optional, List
 import odmlib.descriptor as DESC
 import odmlib.typed as T
 import odmlib.ns_registry as NS
@@ -77,7 +79,7 @@ class ODMWriter:
 
 
 class ODMElement(metaclass=ODMMeta):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         """
         abstract ODM element class used to set the properties of any ODM object
         """
@@ -114,7 +116,7 @@ class ODMElement(metaclass=ODMMeta):
             )
         super().__setattr__(key, value)
 
-    def to_json(self):
+    def to_json(self) -> str:
         """
         transforms odmlib hierarchy into a dict and converts that to JSON and returns it
 
@@ -122,7 +124,7 @@ class ODMElement(metaclass=ODMMeta):
         """
         return json.dumps(self.to_dict())
 
-    def to_xml(self, parent_elem=None, top_elem=None):
+    def to_xml(self, parent_elem: Optional[ET.Element] = None, top_elem: Optional[ET.Element] = None) -> Optional[ET.Element]:
         """
         generates ElementTree XML from the odmlib object hierarchy
 
@@ -158,12 +160,12 @@ class ODMElement(metaclass=ODMMeta):
                 obj.to_xml(odm_elem, top_elem)
         return top_elem
 
-    def to_xml_string(self):
+    def to_xml_string(self) -> str:
         elem = self.to_xml()
         xml_str = ET.tostring(elem, encoding='utf8', method='xml')
         return xml_str.decode("utf-8")
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         """
         transform odmlib object hierarchy into a Python dictionary and return it
 
@@ -194,28 +196,65 @@ class ODMElement(metaclass=ODMMeta):
             args = ", ".join(name for name in self._fields)
             return type(self).__name__ + "(" + args + ")"
 
-    def find(self, obj_name, attr, val):
-        """
-        return an odmlib object for object type obj_name where the attribute attr value equals val
+    def find(self, obj_name: str, attr: str, val: Any) -> Optional[ODMElement]:
+        """Return the first odmlib object where attribute ``attr`` equals ``val``.
+
+        Searches within the child element(s) named ``obj_name`` on this element.
+        For list elements (ODMListObject), returns the first match.
+        For single elements (ODMObject), returns the element if it matches.
 
         :param obj_name: text name of the ODM Element (case sensitive)
         :param attr: text name of the ODM Element Attribute (case sensitive)
         :param val: attribute value to search for
-        :return: an odmlib object of the ODM element with the first time the attribute value matches val
+        :return: first matching odmlib object, or None if not found
         """
-        obj_list = eval("self." + obj_name)
-        if type(obj_list) == list:
+        obj_list = getattr(self, obj_name)
+        if isinstance(obj_list, list):
             for o in obj_list:
-                if o.__dict__[attr] == val:
+                if o.__dict__.get(attr) == val:
                     return o
             return None
         else:
-            if obj_list.__dict__[attr] == val:
+            if obj_list.__dict__.get(attr) == val:
                 return obj_list
-            else:
-                return None
+            return None
 
-    def write_xml(self, odm_file, odm_writer=ODMWriter):
+    def find_all(self, obj_name: str, attr: str, val: Any) -> List[ODMElement]:
+        """Return all odmlib objects where attribute ``attr`` equals ``val``.
+
+        Like find(), but returns all matches instead of just the first.
+
+        :param obj_name: text name of the ODM Element (case sensitive)
+        :param attr: text name of the ODM Element Attribute (case sensitive)
+        :param val: attribute value to search for
+        :return: list of matching odmlib objects (empty list if no matches)
+        """
+        obj_list = getattr(self, obj_name)
+        if isinstance(obj_list, list):
+            return [o for o in obj_list if o.__dict__.get(attr) == val]
+        else:
+            if obj_list.__dict__.get(attr) == val:
+                return [obj_list]
+            return []
+
+    def find_by(self, obj_name: str, **kwargs: Any) -> Optional[ODMElement]:
+        """Return the first odmlib object matching all keyword criteria.
+
+        A more ergonomic alternative to find() for multi-attribute lookups.
+
+        :param obj_name: text name of the ODM Element (case sensitive)
+        :param kwargs: attribute name=value pairs to match
+        :return: first matching odmlib object, or None
+        """
+        obj_list = getattr(self, obj_name)
+        if not isinstance(obj_list, list):
+            obj_list = [obj_list]
+        for o in obj_list:
+            if all(o.__dict__.get(k) == v for k, v in kwargs.items()):
+                return o
+        return None
+
+    def write_xml(self, odm_file: str, odm_writer: type = ODMWriter) -> None:
         """
         write the odmlib hierarchy as an XML file
 
@@ -226,7 +265,7 @@ class ODMElement(metaclass=ODMMeta):
         odm_writer = odm_writer()
         odm_writer.write_odm(odm_file, odm_elem)
 
-    def write_json(self, odm_file):
+    def write_json(self, odm_file: str) -> None:
         """
         write the odmlib hierarchy as a JSON file
 
@@ -235,7 +274,7 @@ class ODMElement(metaclass=ODMMeta):
         with open(odm_file, 'w') as outfile:
             json.dump(self.to_dict(), outfile)
 
-    def build_oid_index(self):
+    def build_oid_index(self) -> IDX.OIDIndex:
         idx = IDX.OIDIndex()
         self._init_oid_index(idx)
         return idx
@@ -258,7 +297,7 @@ class ODMElement(metaclass=ODMMeta):
                     idx.add_oid(obj, self)
         return
 
-    def verify_oids(self, oid_checker):
+    def verify_oids(self, oid_checker: Any) -> bool:
         """
         checks all the OIDs for uniqueness and Def/Ref integrity; oid_checker throws a ValueError on failure
 
@@ -267,7 +306,7 @@ class ODMElement(metaclass=ODMMeta):
         self._init_oid_check(oid_checker)
         return oid_checker.check_oid_refs()
 
-    def unreferenced_oids(self, oid_checker):
+    def unreferenced_oids(self, oid_checker: Any) -> list:
         if not oid_checker.is_oids_verified():
             self.verify_oids(oid_checker)
         return oid_checker.check_unreferenced_oids()
@@ -293,7 +332,7 @@ class ODMElement(metaclass=ODMMeta):
                     oid_checker.add_oid_ref(obj, attr)
         return
 
-    def verify_conformance(self, validator):
+    def verify_conformance(self, validator: Any) -> Any:
         """
         uses validator object to check object for conformance with the model
 
@@ -303,7 +342,7 @@ class ODMElement(metaclass=ODMMeta):
         result = validator.check_conformance(doc_dict, type(self).__name__)
         return result
 
-    def verify_order(self):
+    def verify_order(self) -> bool:
         odm_content = {attr: obj for attr, obj in self.__dict__.items() if attr not in ["_fields", "_attr_ns", "_elems", "_attrs"]}
         obj_list = [key for key in list(self.__dict__.keys()) if key != "_content" and key not in self._attrs]
         elem_list = [elem for elem in self._elems if elem in obj_list]
@@ -322,7 +361,7 @@ class ODMElement(metaclass=ODMMeta):
                     o.verify_order()
         return True
 
-    def reorder_object(self):
+    def reorder_object(self) -> None:
         warnings.warn(
             f"{self.__class__.__name__} elements are being reordered to match the ODM specification. "
             "Use verify_order() before reorder_object() to understand the ordering issue.",

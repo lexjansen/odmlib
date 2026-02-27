@@ -67,6 +67,8 @@ exclude = ["tests*"]
 "odmlib" = [
     "data/**/*.json",
     "schemas/**/*.xsd",
+    "py.typed",
+    "**/*.pyi",
 ]
 
 [tool.pytest.ini_options]

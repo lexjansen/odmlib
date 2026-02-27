@@ -1,15 +1,20 @@
+from __future__ import annotations
+from typing import Any, Optional
 from odmlib.exceptions import OdmlibRequiredAttributeError
 
 
 class Descriptor:
-    def __init__(self, name=None, required=False, element_class=None, valid_values=[], namespace="odm"):
+    def __init__(self, name: Optional[str] = None, required: bool = False,
+                 element_class: Optional[type] = None,
+                 valid_values: Optional[list] = None,
+                 namespace: str = "odm") -> None:
         self.name = name
         self.required = required
         self.element_class = element_class
-        self.valid_values = valid_values
+        self.valid_values = valid_values if valid_values is not None else []
         self.namespace = namespace
 
-    def __get__(self, instance, cls):
+    def __get__(self, instance: Any, cls: type) -> Any:
         if instance is None:
             return self
         elif (self.name not in instance.__dict__) and (self.name != self.__dict__["name"]):
@@ -33,8 +38,8 @@ class Descriptor:
                             instance.__dict__[self.name] = None
             return instance.__dict__[self.name]
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Any, value: Any) -> None:
         instance.__dict__[self.name] = value
 
-    def __delete__(self, instance):
+    def __delete__(self, instance: Any) -> None:
         del instance.__dict__[self.name]
