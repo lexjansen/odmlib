@@ -1,8 +1,32 @@
-from odmlib.exceptions import OdmlibOIDError
+"""Manual OID ref/def checks for ODM 1.3.2.
+
+.. deprecated:: 0.2.0
+    Use :func:`odmlib.oid_generator.create_oid_checker` instead.
+    This manual implementation will be removed in v0.3.0.
+
+    Migration::
+
+        # Before (deprecated):
+        from odmlib.odm_1_3_2.rules.oid_ref import OIDRef
+        checker = OIDRef()
+        odm.verify_oids(checker)
+
+        # After:
+        from odmlib.oid_generator import create_oid_checker
+        checker = create_oid_checker("odm_1_3_2")
+        odm.verify_oids(checker)
+"""
+import warnings
+from odmlib.exceptions import OdmlibOIDError, OdmlibDeprecationWarning
 
 
 class OIDRef:
     def __init__(self, skip_attrs=[], skip_elems=[]):
+        warnings.warn(
+            "OIDRef is deprecated. Use odmlib.oid_generator.create_oid_checker('odm_1_3_2') instead.",
+            OdmlibDeprecationWarning,
+            stacklevel=2,
+        )
         self.oid = {}
         self.oid_ref = {}
         self._init_oid_ref()
@@ -127,8 +151,8 @@ class OIDRef:
         self.def_ref["SiteRef"] = ["LocationOID"]
         self.def_ref["InvestigatorRef"] = ["UserOID"]
         self.def_ref["AdminData"] = ["StudyOID"]
-        self.def_ref["SignatureRef"] = ["SignatureOID "]
+        self.def_ref["SignatureRef"] = ["SignatureOID"]
         self.def_ref["Association"] = ["StudyOID", "MetaDataVersionOID"]
         self.def_ref["ReferenceData"] = ["StudyOID", "MetaDataVersionOID"]
         self.def_ref["ClinicalData"] = ["StudyOID", "MetaDataVersionOID"]
-        self.def_ref["KeySet"] = ["StudyOID", "StudyEventOID", "FormOID", "ItemGroupOID", "ItemOID "]
+        self.def_ref["KeySet"] = ["StudyOID", "StudyEventOID", "FormOID", "ItemGroupOID", "ItemOID"]

@@ -1,3 +1,14 @@
+"""Concrete loaders for standard ODM XML and JSON documents.
+
+This module provides:
+
+- :class:`JSONODMLoader` -- loads ODM-JSON files into the odmlib object model
+- :class:`DictODMLoader` -- alias for JSONODMLoader (loads from Python dicts)
+- :class:`XMLODMLoader` -- loads ODM-XML files into the odmlib object model
+
+These loaders are typically used via the :class:`~odmlib.loader.ODMLoader`
+facade rather than directly.
+"""
 from __future__ import annotations
 from typing import Any, Optional
 import odmlib.document_loader as DL
@@ -13,12 +24,36 @@ ODM_NS = {'odm': 'http://www.cdisc.org/ns/odm/v1.3'}
 
 
 class JSONODMLoader(DL.DocumentLoader):
+    """Loads ODM-JSON documents into the odmlib object model.
+
+    Recursively parses JSON dictionaries and instantiates odmlib model
+    classes based on dictionary keys matching class names.
+
+    Args:
+        model_package (str): Package name to load models from
+            (default: "odm_1_3_2"). Options: "odm_1_3_2", "odm_2_0",
+            "dataset_1_0_1", "ct_1_1_1".
+    """
+
     def __init__(self, model_package: str = "odm_1_3_2") -> None:
         self.filename: Optional[str] = None
         self.odm_dict: dict = {}
         self.ODM = importlib.import_module(f"odmlib.{model_package}.model")
 
     def load_document(self, odm_dict: dict, key: str) -> Any:
+        """Recursively load a dict into an odmlib object tree.
+
+        Instantiates the odmlib class named ``key`` with scalar attributes
+        from ``odm_dict``, then recurses into nested dicts (ODMObject) and
+        lists of dicts (ODMListObject).
+
+        Args:
+            odm_dict (dict): Dictionary containing the element's data.
+            key (str): Class name to instantiate from the model package.
+
+        Returns:
+            An odmlib element object populated from ``odm_dict``.
+        """
         attrib = {k: value for k, value in odm_dict.items() if not isinstance(value, (list, dict))}
         elem_class = getattr(self.ODM, key)
         odm_obj = elem_class(**attrib)
@@ -36,16 +71,43 @@ class JSONODMLoader(DL.DocumentLoader):
         return odm_obj
 
     def create_document(self, filename: str) -> dict:
+        """Parse a JSON file and store its contents internally.
+
+        Args:
+            filename (str): Path to the ODM JSON file.
+
+        Returns:
+            dict: The parsed JSON as a Python dictionary.
+        """
         self.filename = filename
         with open(self.filename) as json_in:
             self.odm_dict = json.load(json_in)
         return self.odm_dict
 
     def create_document_from_string(self, odm_string: str) -> dict:
+        """Parse an ODM JSON string and store its contents internally.
+
+        Args:
+            odm_string (str): JSON string containing the ODM document.
+
+        Returns:
+            dict: The parsed JSON as a Python dictionary.
+        """
         self.odm_dict = json.loads(odm_string)
         return self.odm_dict
 
     def load_odm(self) -> Any:
+        """Return the root ODM object loaded from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Returns:
+            An odmlib ``ODM`` root object.
+
+        Raises:
+            OdmlibLoaderStateError: If no document has been loaded yet.
+        """
         if not self.odm_dict:
             raise OdmlibLoaderStateError(
                 "create_document must be used to create the document before executing load_odm",
@@ -55,6 +117,20 @@ class JSONODMLoader(DL.DocumentLoader):
         return odm_odmlib
 
     def load_metadataversion(self, idx: int = 0) -> Any:
+        """Return the MetaDataVersion at index ``idx`` from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Args:
+            idx (int): Zero-based index of the MetaDataVersion (default: 0).
+
+        Returns:
+            A ``MetaDataVersion`` odmlib object.
+
+        Raises:
+            OdmlibLoaderStateError: If no document has been loaded yet.
+        """
         if not self.odm_dict:
             raise OdmlibLoaderStateError(
                 "create_document must be used to create the document before executing load_metadataversion",
@@ -65,6 +141,20 @@ class JSONODMLoader(DL.DocumentLoader):
         return mdv_odmlib
 
     def load_study(self, idx: int = 0) -> Any:
+        """Return the Study at index ``idx`` from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Args:
+            idx (int): Zero-based index of the Study (default: 0).
+
+        Returns:
+            A ``Study`` odmlib object.
+
+        Raises:
+            OdmlibLoaderStateError: If no document has been loaded yet.
+        """
         if not self.odm_dict:
             raise OdmlibLoaderStateError(
                 "create_document must be used to create the document before executing load_study",
@@ -76,10 +166,25 @@ class JSONODMLoader(DL.DocumentLoader):
 
 
 class DictODMLoader(JSONODMLoader):
+    """Loads odmlib objects from Python dictionaries (same as JSONODMLoader)."""
+
     pass
 
 
 class XMLODMLoader(DL.DocumentLoader):
+    """Loads ODM-XML documents into the odmlib object model.
+
+    Parses XML using ElementTree and dynamically instantiates odmlib model
+    classes based on element tag names.
+
+    Args:
+        model_package (str): Package name (default: "odm_1_3_2").
+            Options: "odm_1_3_2", "odm_2_0", "dataset_1_0_1", "ct_1_1_1".
+        ns_uri (str): ODM namespace URI (default ODM 1.3.2 URI).
+        local_model (bool): If True, ``model_package`` is a full module path.
+        nsr: Optional pre-configured NamespaceRegistry instance.
+    """
+
     def __init__(self, model_package: str = "odm_1_3_2", ns_uri: str = "http://www.cdisc.org/ns/odm/v1.3",
                  local_model: bool = False, nsr: Optional[Any] = None) -> None:
         self.filename: Optional[str] = None
@@ -96,6 +201,18 @@ class XMLODMLoader(DL.DocumentLoader):
             self._set_namespace(None)
 
     def load_document(self, elem: ET.Element, *args: Any) -> Any:
+        """Recursively load an XML element into an odmlib object tree.
+
+        Strips the namespace URI from the tag name, instantiates the
+        matching odmlib class, and recurses into child elements.
+
+        Args:
+            elem (ET.Element): The XML element to load.
+            *args: Unused; present for interface compatibility.
+
+        Returns:
+            An odmlib element object populated from ``elem``.
+        """
         elem_name = elem.tag[elem.tag.find('}') + 1:]
         elem_class = getattr(self.ODM, elem_name)
         if elem.text and not elem.text.isspace():
@@ -119,6 +236,16 @@ class XMLODMLoader(DL.DocumentLoader):
         return odm_obj
 
     def create_document(self, filename: str, namespace_registry: Optional[Any] = None) -> ET.Element:
+        """Parse an ODM XML file and store the parsed tree internally.
+
+        Args:
+            filename (str): Path to the ODM XML file.
+            namespace_registry: Optional pre-configured
+                :class:`~odmlib.ns_registry.NamespaceRegistry` instance.
+
+        Returns:
+            ET.Element: The root XML element of the parsed document.
+        """
         self.filename = filename
         if namespace_registry is not None:
             self._set_namespace(namespace_registry)
@@ -127,29 +254,76 @@ class XMLODMLoader(DL.DocumentLoader):
         return root
 
     def create_document_from_string(self, odm_string: str, namespace_registry: Optional[Any] = None) -> ET.Element:
+        """Parse an ODM XML string and store the parsed tree internally.
+
+        Args:
+            odm_string (str): XML string containing the ODM document.
+            namespace_registry: Optional pre-configured
+                :class:`~odmlib.ns_registry.NamespaceRegistry` instance.
+
+        Returns:
+            ET.Element: The root XML element of the parsed document.
+        """
         self._set_namespace(namespace_registry)
         self.parser = P.ODMStringParser(odm_string, self.nsr)
         root = self.parser.parse()
         return root
 
     def _set_namespace(self, namespace_registry: Optional[Any]) -> None:
+        """Configure the namespace registry for parsing.
+
+        Args:
+            namespace_registry: An existing
+                :class:`~odmlib.ns_registry.NamespaceRegistry` to use,
+                or ``None`` to create a new default ODM 1.3.2 registry.
+        """
         if namespace_registry is not None:
             self.nsr = namespace_registry
         else:
             self.nsr = NS.NamespaceRegistry(prefix="odm", uri="http://www.cdisc.org/ns/odm/v1.3", is_default=True)
 
     def load_odm(self) -> Any:
+        """Return the root ODM object loaded from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Returns:
+            An odmlib ``ODM`` root object.
+        """
         root = self.parser.ODM()
         root_odmlib = self.load_document(root)
         return root_odmlib
 
     def load_metadataversion(self, idx: int = 0) -> Any:
+        """Return the MetaDataVersion at index ``idx`` from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Args:
+            idx (int): Zero-based index of the MetaDataVersion (default: 0).
+
+        Returns:
+            A ``MetaDataVersion`` odmlib object.
+        """
         self.parser.set_namespaces(self.nsr)
         mdv = self.parser.MetaDataVersion()
         mdv_odmlib = self.load_document(mdv[idx])
         return mdv_odmlib
 
     def load_study(self, idx: int = 0) -> Any:
+        """Return the Study at index ``idx`` from the stored document.
+
+        Must be called after :meth:`create_document` or
+        :meth:`create_document_from_string`.
+
+        Args:
+            idx (int): Zero-based index of the Study (default: 0).
+
+        Returns:
+            A ``Study`` odmlib object.
+        """
         self.parser.set_namespaces(self.nsr)
         study = self.parser.Study()
         study_odmlib = self.load_document(study[idx])

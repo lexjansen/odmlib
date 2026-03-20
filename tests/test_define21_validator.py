@@ -9,10 +9,8 @@ import odmlib.odm_parser as P
 class TestODMValidator(TestCase):
     def setUp(self) -> None:
         self.define_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'defineV21-SDTM.xml')
-        # set the file and path to point to the odm 1.3.2 schema on your system
-        define_schema_file = os.path.join(os.sep, 'home', 'sam', 'standards', 'define-xml-2-1', 'schema',
-                                          'cdisc-define-2.1', 'define2-1-0.xsd')
-        self.validator = P.ODMSchemaValidator(define_schema_file)
+        # Use packaged Define-XML v2.1 schema bundled with odmlib
+        self.validator = P.ODMSchemaValidator(standard="define", version="2.1")
 
     def test_validate_tree_valid(self):
         self.parser = P.ODMParser(self.define_file)

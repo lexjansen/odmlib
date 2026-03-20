@@ -1,3 +1,15 @@
+"""Core metaclass, writer, and base element class for odmlib ODM models.
+
+This module provides three central components:
+
+- :class:`ODMMeta` -- metaclass that processes descriptor-based class definitions
+- :class:`ODMWriter` -- utility class for writing ElementTree XML to file
+- :class:`ODMElement` -- base class for all ODM element model objects
+
+All model classes (e.g., ``Study``, ``ItemDef``, ``MetaDataVersion``) inherit
+from :class:`ODMElement` and use descriptors from :mod:`odmlib.typed` to define
+their attributes and child elements.
+"""
 from __future__ import annotations
 from typing import Any, Optional, List
 import odmlib.descriptor as DESC
@@ -19,12 +31,39 @@ from odmlib.exceptions import (
 
 
 class ODMMeta(type):
+    """Metaclass for all ODM element classes.
+
+    Processes class definitions to:
+
+    - Preserve attribute declaration order (using OrderedDict)
+    - Separate XML attributes (``_attrs``) from child elements (``_elems``)
+    - Track non-default namespace prefixes (``_attr_ns``)
+    - Build the ``_fields`` list of all declared properties
+    - Set the default ``namespace`` to "odm" if not specified
+    """
+
     @classmethod
     def __prepare__(cls, name, bases):
         """ preserves the order of declarations in each class """
         return OrderedDict()
 
     def __new__(cls, clsname, bases, clsdict):
+        """Create a new ODM element class.
+
+        Scans ``clsdict`` for :class:`~odmlib.typed.ODMObject`,
+        :class:`~odmlib.typed.ODMListObject`, and other
+        :class:`~odmlib.descriptor.Descriptor` instances. Populates
+        ``_fields``, ``_elems``, ``_attrs``, and ``_attr_ns`` on the
+        new class. Sets ``namespace`` to ``"odm"`` if not declared.
+
+        Args:
+            clsname (str): Name of the class being created.
+            bases (tuple): Base classes.
+            clsdict (OrderedDict): Class namespace dictionary (ordered).
+
+        Returns:
+            type: The newly constructed class object.
+        """
         # variables created in classes become the class attributes
         # fields = [key for key, val in clsdict.items() if isinstance(val, (DESC.Descriptor, ODMMeta))]
         clsdict["_fields"] = []
@@ -62,6 +101,10 @@ class ODMMeta(type):
 
 
 class ODMWriter:
+    """Writes an odmlib ElementTree hierarchy to an XML file.
+
+    Handles namespace registration and XML declaration.
+    """
 
     @staticmethod
     def write_odm(odm_file, odm_elem):
@@ -79,9 +122,46 @@ class ODMWriter:
 
 
 class ODMElement(metaclass=ODMMeta):
+    """Base class for all ODM element model objects.
+
+    Provides XML and JSON serialization, OID validation, conformance
+    checking, and element ordering verification. All model classes
+    (e.g., Study, ItemDef, MetaDataVersion) inherit from this class.
+
+    Serialization:
+        - :meth:`to_xml` -- generate ElementTree XML
+        - :meth:`to_xml_string` -- XML as a string
+        - :meth:`to_dict` -- Python dict (namespace info stripped)
+        - :meth:`to_json` -- JSON string
+        - :meth:`write_xml` -- write XML to file
+        - :meth:`write_json` -- write JSON to file
+
+    Validation:
+        - :meth:`verify_oids` -- OID uniqueness and ref/def integrity
+        - :meth:`verify_conformance` -- Cerberus schema conformance
+        - :meth:`verify_order` -- element order per ODM spec
+        - :meth:`validate` -- combined validation with error collection
+
+    Finding elements:
+        - :meth:`find` -- find first child element by attribute value
+        - :meth:`find_all` -- find all matching child elements
+        - :meth:`find_by` -- find by multiple attribute criteria
+    """
+
     def __init__(self, **kwargs: Any) -> None:
-        """
-        abstract ODM element class used to set the properties of any ODM object
+        """Initialize an ODM element with keyword arguments.
+
+        Sets attributes and child elements on the instance using the
+        provided keyword arguments. Validates that all required attributes
+        are present after construction.
+
+        Args:
+            **kwargs: Attribute names and values for this element.
+                Names must match declared descriptors on the class.
+
+        Raises:
+            OdmlibTypeError: If an unknown keyword argument is provided.
+            OdmlibRequiredAttributeError: If a required attribute is missing.
         """
         for name, val in kwargs.items():
             if name not in self.__class__.__dict__.keys():
@@ -107,6 +187,18 @@ class ODMElement(metaclass=ODMMeta):
                 )
 
     def __setattr__(self, key, value):
+        """Set an attribute, validating it belongs to this class.
+
+        Delegates to the descriptor protocol after confirming ``key``
+        is a declared field on this class.
+
+        Args:
+            key (str): Attribute name.
+            value: Value to assign.
+
+        Raises:
+            OdmlibTypeError: If ``key`` is not a declared attribute on this class.
+        """
         """ ensure the object being added is a type that belongs to the class """
         if not hasattr(self, key):
             raise OdmlibTypeError(
@@ -161,6 +253,11 @@ class ODMElement(metaclass=ODMMeta):
         return top_elem
 
     def to_xml_string(self) -> str:
+        """Convert this element to an XML string.
+
+        Returns:
+            str: UTF-8 XML representation of this element.
+        """
         elem = self.to_xml()
         xml_str = ET.tostring(elem, encoding='utf8', method='xml')
         return xml_str.decode("utf-8")
@@ -184,10 +281,23 @@ class ODMElement(metaclass=ODMMeta):
         return property_dict
 
     def __repr__(self):
+        """Return a developer-readable representation of this element.
+
+        Returns:
+            str: Class name with declared field names listed.
+        """
         args = ", ".join(name for name in self._fields)
         return type(self).__name__ + "(" + args + ")"
 
     def __str__(self):
+        """Return a human-readable representation of this element.
+
+        Returns the element's text content if present, or its OID value
+        if it has one, otherwise falls back to a field name listing.
+
+        Returns:
+            str: Human-readable string for this element.
+        """
         if "_content" in self._fields and self._content:
             return self._content
         elif "OID" in self._fields and self.OID:
@@ -275,6 +385,14 @@ class ODMElement(metaclass=ODMMeta):
             json.dump(self.to_dict(), outfile)
 
     def build_oid_index(self) -> IDX.OIDIndex:
+        """Build an OID lookup index for this element and all descendants.
+
+        Traverses the entire object tree and creates an index mapping
+        OID attribute values to their containing odmlib objects.
+
+        Returns:
+            OIDIndex: Index supporting ``find_all(oid)`` lookups.
+        """
         idx = IDX.OIDIndex()
         self._init_oid_index(idx)
         return idx
@@ -307,6 +425,17 @@ class ODMElement(metaclass=ODMMeta):
         return oid_checker.check_oid_refs()
 
     def unreferenced_oids(self, oid_checker: Any) -> list:
+        """Find OID definitions that are not referenced anywhere.
+
+        Calls :meth:`verify_oids` first if OIDs have not yet been verified.
+
+        Args:
+            oid_checker: An ``OIDRef`` instance (from ``rules/oid_ref.py``)
+                or a ``DynamicOIDRef`` instance.
+
+        Returns:
+            list: OID definition values that have no corresponding references.
+        """
         if not oid_checker.is_oids_verified():
             self.verify_oids(oid_checker)
         return oid_checker.check_unreferenced_oids()
@@ -343,6 +472,18 @@ class ODMElement(metaclass=ODMMeta):
         return result
 
     def verify_order(self) -> bool:
+        """Verify that child elements are in the model declaration order.
+
+        ODM requires specific element ordering in XML output. Recursively
+        checks this element and all descendants.
+
+        Returns:
+            bool: True if ordering is correct.
+
+        Raises:
+            OdmlibElementOrderError: If any element has children out of
+                order. Use :meth:`reorder_object` to fix automatically.
+        """
         odm_content = {attr: obj for attr, obj in self.__dict__.items() if attr not in ["_fields", "_attr_ns", "_elems", "_attrs"]}
         obj_list = [key for key in list(self.__dict__.keys()) if key != "_content" and key not in self._attrs]
         elem_list = [elem for elem in self._elems if elem in obj_list]
@@ -362,6 +503,16 @@ class ODMElement(metaclass=ODMMeta):
         return True
 
     def reorder_object(self) -> None:
+        """Reorder this element's children to match model declaration order.
+
+        Modifies ``__dict__`` in-place. Issues an :class:`OdmlibWarning`
+        to indicate that reordering was needed.
+
+        Note:
+            Recursion is not automatic — call on each element that needs
+            reordering, or call :meth:`verify_order` first to identify
+            which elements need reordering.
+        """
         warnings.warn(
             f"{self.__class__.__name__} elements are being reordered to match the ODM specification. "
             "Use verify_order() before reorder_object() to understand the ordering issue.",

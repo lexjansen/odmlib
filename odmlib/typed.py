@@ -1,3 +1,28 @@
+"""Type-validated descriptors for ODM element attributes.
+
+This module defines descriptor classes that enforce type validation
+on ODM element attributes at assignment time. Each descriptor validates
+the type, format, or enumerated values of the assigned value.
+
+The descriptor hierarchy:
+    - :class:`Typed` -- base type-checking descriptor
+    - :class:`String`, :class:`OID`, :class:`OIDRef`, :class:`Name`, :class:`ID` -- string types
+    - :class:`Integer`, :class:`Float` -- numeric types with string coercion
+    - :class:`Positive`, :class:`NonNegative` -- numeric constraint mixins
+    - :class:`PositiveInteger`, :class:`NonNegativeInteger` -- combined
+    - :class:`Sized`, :class:`SizedString` -- length-constrained strings
+    - :class:`Regex`, :class:`SizedRegexString` -- pattern-matching
+    - :class:`DateTimeString`, :class:`DateString`, :class:`PartialDateTimeString`,
+      :class:`PartialDateString`, :class:`PartialTimeString`,
+      :class:`IncompleteDateTimeString`, :class:`IncompleteDateString`,
+      :class:`IncompleteTimeString`, :class:`DurationDateTimeString` -- temporal types
+    - :class:`SASName`, :class:`SASFormat` -- SAS naming constraints
+    - :class:`Email`, :class:`Url`, :class:`FileName` -- format validators
+    - :class:`ValidValues`, :class:`ExtendedValidValues` -- enumerated value validators
+    - :class:`ValueSetString` -- combined enumerated + string validator
+    - :class:`ODMObject` -- single child ODM element container
+    - :class:`ODMListObject` -- list of child ODM elements container
+"""
 import odmlib.descriptor as DESC
 import re
 import odmlib.valueset as VS
@@ -8,6 +33,15 @@ from odmlib.exceptions import OdmlibTypeError, OdmlibValidationError
 
 
 class Typed(DESC.Descriptor):
+    """Base descriptor that validates value type on assignment.
+
+    Subclasses set ``odm_type`` to the expected Python type.
+    Raises :exc:`~odmlib.exceptions.OdmlibTypeError` on type mismatch.
+
+    Attributes:
+        odm_type (type): The expected Python type (default: object).
+    """
+
     odm_type = object
 
     def __set__(self, instance, value):
@@ -24,6 +58,12 @@ class Typed(DESC.Descriptor):
 
 
 class Integer(DESC.Descriptor):
+    """Descriptor for integer-valued ODM attributes.
+
+    Accepts int values and strings that convert to int (e.g., "42").
+    Used for OrderNumber, KeySequence, and similar integer attributes.
+    """
+
     def __set__(self, instance, value):
         # in XML integers are presented as strings e.g. OrderNumber="1"
         if isinstance(value, str):
@@ -49,6 +89,12 @@ class Integer(DESC.Descriptor):
 
 
 class Float(DESC.Descriptor):
+    """Descriptor for float-valued ODM attributes.
+
+    Accepts float, int, and string values that convert to float.
+    Used for Rank attributes in CodeListItem and EnumeratedItem.
+    """
+
     def __set__(self, instance, value):
         # in XML floats are presented as strings
         if isinstance(value, str):
@@ -76,38 +122,67 @@ class Float(DESC.Descriptor):
 
 
 class String(Typed):
+    """Descriptor for string-valued ODM attributes."""
+
     odm_type = str
 
 
 class OID(Typed):
+    """Descriptor for OID (Object Identifier) attributes.
+
+    OIDs uniquely identify definition elements within a MetaDataVersion.
+    Used on the ``OID`` attribute of *Def elements (e.g., ``ItemDef.OID``).
+    """
+
     odm_type = str
 
 
 class OIDRef(Typed):
+    """Descriptor for OID reference attributes.
+
+    References the OID of a definition element.
+    Used on reference elements (e.g., ``ItemRef.ItemOID`` references ``ItemDef.OID``).
+    """
+
     odm_type = str
 
 
 class Name(Typed):
+    """Descriptor for the Name attribute of ODM elements."""
+
     odm_type = str
 
 
 class ID(Typed):
+    """Descriptor for XML ID attributes."""
+
     odm_type = str
 
 
 class IDRef(Typed):
+    """Descriptor for XML IDREF attributes."""
+
     odm_type = str
 
 
 class List(Typed):
+    """Descriptor for list-valued attributes."""
+
     odm_type = list
 
 
 class Dictionary(Typed):
+    """Descriptor for dictionary-valued attributes."""
+
     odm_type = dict
 
 
 class Positive(DESC.Descriptor):
+    """Mixin descriptor that enforces value > 0.
+
+    Raises :exc:`~odmlib.exceptions.OdmlibTypeError` if value is <= 0.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and value <= 0:
             raise OdmlibTypeError(
@@ -120,6 +195,11 @@ class Positive(DESC.Descriptor):
 
 
 class NonNegative(DESC.Descriptor):
+    """Mixin descriptor that enforces value >= 0.
+
+    Raises :exc:`~odmlib.exceptions.OdmlibTypeError` if value is < 0.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and value < 0:
             raise OdmlibTypeError(
@@ -132,22 +212,44 @@ class NonNegative(DESC.Descriptor):
 
 
 class PositiveInteger(Integer, Positive):
+    """Descriptor for positive integer attributes (value > 0).
+
+    Combines integer type validation with positive value constraint.
+    Used for Length, ItemGroupDataSeq, and similar attributes.
+    """
+
     pass
 
 
 class NonNegativeInteger(Integer, NonNegative):
+    """Descriptor for non-negative integer attributes (value >= 0).
+
+    Combines integer type validation with non-negative constraint.
+    Used for SignificantDigits and similar attributes.
+    """
+
     pass
 
 
 class PositiveFloat(Float, Positive):
+    """Descriptor for positive float attributes (value > 0)."""
+
     pass
 
 
 class NonNegativeFloat(Float, NonNegative):
+    """Descriptor for non-negative float attributes (value >= 0)."""
+
     pass
 
 
 class Sized(DESC.Descriptor):
+    """Mixin descriptor that enforces a maximum string length.
+
+    Args:
+        max_length (int): Maximum allowed length of the string value.
+    """
+
     def __init__(self, *args, max_length, **kwargs):
         # pulls out named arg max_length and passes the remaining arguments along
         self.max_length = max_length
@@ -166,11 +268,17 @@ class Sized(DESC.Descriptor):
 
 
 class SizedString(String, Sized):
+    """String descriptor with a maximum length constraint."""
+
     pass
 
 
 class Regex(DESC.Descriptor):
-    """ pattern matching """
+    """Descriptor that validates a string against a regular expression pattern.
+
+    Args:
+        pat (str): Regular expression pattern the value must match.
+    """
     def __init__(self, *args, pat, **kwargs):
         # takes a pattern arg named pat and passes the remaining arguments along
         self.pat = re.compile(pat)
@@ -188,10 +296,19 @@ class Regex(DESC.Descriptor):
 
 
 class SizedRegexString(SizedString, Regex):
+    """String descriptor with both size and regex constraints."""
+
     pass
 
 
 class DateTimeString(DESC.Descriptor):
+    """Descriptor for ISO 8601 datetime strings.
+
+    Validates format: ``YYYY-MM-DDTHH:MM:SS[.sss][Z|±HH:MM]``
+
+    Used for ``CreationDateTime``, ``AsOfDateTime``, and similar attributes.
+    """
+
     def __set__(self, instance, value):
         iso_pat = r'^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$'
         pat = re.compile(iso_pat)
@@ -206,6 +323,11 @@ class DateTimeString(DESC.Descriptor):
 
 
 class PartialDateTimeString(DESC.Descriptor):
+    """Descriptor for partial ISO 8601 datetime strings.
+
+    Allows partial date/time values where some components may be omitted.
+    """
+
     def __set__(self, instance, value):
         part_pat = r'^((([0-9][0-9][0-9][0-9])((-(([0][1-9])|([1][0-2])))((-(([0][1-9])|([1-2][0-9])|([3][0-1])))(T((([0-1][0-9])|([2][0-3]))((:([0-5][0-9]))(((:([0-5][0-9]))((\.[0-9]+)?))?)?)?((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|(Z)))?))?)?)?))$'
         compiled_part_pat = re.compile(part_pat)
@@ -220,6 +342,11 @@ class PartialDateTimeString(DESC.Descriptor):
 
 
 class PartialDateString(DESC.Descriptor):
+    """Descriptor for partial ISO 8601 date strings.
+
+    Accepts full ``YYYY-MM-DD``, year-month ``YYYY-MM``, or year-only ``YYYY``.
+    """
+
     def __set__(self, instance, value):
         if value and value.count('-') == 2:
             try:
@@ -245,6 +372,11 @@ class PartialDateString(DESC.Descriptor):
 
 
 class PartialTimeString(DESC.Descriptor):
+    """Descriptor for partial ISO 8601 time strings.
+
+    Accepts full ``HH:MM:SS`` or partial time values.
+    """
+
     def __set__(self, instance, value):
         time_pat = r'^(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$'
         compiled_time_pat = re.compile(time_pat)
@@ -261,6 +393,11 @@ class PartialTimeString(DESC.Descriptor):
 
 
 class IncompleteDateTimeString(DESC.Descriptor):
+    """Descriptor for incomplete ISO 8601 datetime strings.
+
+    Allows ``-`` as a placeholder for unknown date/time components.
+    """
+
     def __set__(self, instance, value):
         inc_pat = r'^(((([0-9][0-9][0-9][0-9]))|-)-(((([0][1-9])|([1][0-2])))|-)-(((([0][1-9])|([1-2][0-9])|([3][0-1])))|-)T(((([0-1][0-9])|([2][0-3])))|-):((([0-5][0-9]))|-):((([0-5][0-9](\.[0-9]+)?))|-)((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|Z|-))?)$'
         compiled_inc_pat = re.compile(inc_pat)
@@ -275,6 +412,11 @@ class IncompleteDateTimeString(DESC.Descriptor):
 
 
 class IncompleteDateString(DESC.Descriptor):
+    """Descriptor for incomplete ISO 8601 date strings.
+
+    Allows ``-`` as a placeholder for unknown date components.
+    """
+
     def __set__(self, instance, value):
         inc_pat = r'^(((([0-9][0-9][0-9][0-9]))|-)-(((([0][1-9])|([1][0-2])))|-)-(((([0][1-9])|([1-2][0-9])|([3][0-1])))|-))$'
         compiled_inc_pat = re.compile(inc_pat)
@@ -289,6 +431,11 @@ class IncompleteDateString(DESC.Descriptor):
 
 
 class IncompleteTimeString(DESC.Descriptor):
+    """Descriptor for incomplete ISO 8601 time strings.
+
+    Allows ``-`` as a placeholder for unknown time components.
+    """
+
     def __set__(self, instance, value):
         inc_pat = r'^((((([0-1][0-9])|([2][0-3])))|-):((([0-5][0-9]))|-):((([0-5][0-9](\.[0-9]+)?))|-)((((\+|-)(([0-1][0-9])|([2][0-3])):[0-5][0-9])|Z|-))?)$'
         compiled_inc_pat = re.compile(inc_pat)
@@ -303,6 +450,12 @@ class IncompleteTimeString(DESC.Descriptor):
 
 
 class DurationDateTimeString(DESC.Descriptor):
+    """Descriptor for ISO 8601 duration strings (week-based).
+
+    Validates format: ``[+-]P{n}W`` (e.g., ``P1W`` for one week).
+    Used for timing window attributes in ODM 2.0.
+    """
+
     def __set__(self, instance, value):
         dur_pat = r'^((\+ | -)?P([0-9]([0-9]+)?)W)$'
         pat = re.compile(dur_pat)
@@ -317,6 +470,11 @@ class DurationDateTimeString(DESC.Descriptor):
 
 
 class DateString(DESC.Descriptor):
+    """Descriptor for ISO 8601 date strings (YYYY-MM-DD).
+
+    Used for ``EffectiveDate`` in MetaDataVersionRef.
+    """
+
     def __set__(self, instance, value):
         try:
             if value is not None:
@@ -332,6 +490,13 @@ class DateString(DESC.Descriptor):
 
 
 class SASName(DESC.Descriptor):
+    """Descriptor for SAS variable/dataset name attributes.
+
+    Validates that the value starts with a letter or underscore,
+    contains only alphanumerics and underscores, and is at most 8
+    characters long. Used for SASFieldName, SASDatasetName, etc.
+    """
+
     def __set__(self, instance, value):
         pat = re.compile("[A-Za-z_][A-Za-z0-9_]*$")
         if (value is not None) and (not pat.match(value) or len(value) > 8):
@@ -346,6 +511,13 @@ class SASName(DESC.Descriptor):
 
 
 class SASFormat(DESC.Descriptor):
+    """Descriptor for SAS format name attributes.
+
+    Validates that the value starts with a letter, underscore, or ``$``,
+    contains only alphanumerics, underscores, and dots, and is at most
+    8 characters long. Used for SASFormatName.
+    """
+
     def __set__(self, instance, value):
         pat = re.compile("[A-Za-z_$][A-Za-z0-9_.]*$")
         if (value is not None) and (not pat.match(value) or len(value) > 8):
@@ -359,6 +531,11 @@ class SASFormat(DESC.Descriptor):
 
 
 class Email(DESC.Descriptor):
+    """Descriptor for email address attributes.
+
+    Validates using the ``validators.email`` function.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and (not valid_email(value)):
             raise OdmlibValidationError(
@@ -371,6 +548,11 @@ class Email(DESC.Descriptor):
 
 
 class Url(DESC.Descriptor):
+    """Descriptor for URL attributes.
+
+    Validates using the ``validators.url`` function.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and (not valid_url(value)):
             raise OdmlibValidationError(
@@ -383,6 +565,12 @@ class Url(DESC.Descriptor):
 
 
 class FileName(DESC.Descriptor):
+    """Descriptor for file name attributes.
+
+    Validates using ``pathvalidate.is_valid_filename``.
+    Used for PdfFileName, PictureFileName, etc.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and (not is_valid_filename(value)):
             raise OdmlibValidationError(
@@ -395,6 +583,12 @@ class FileName(DESC.Descriptor):
 
 
 class ValidValues(DESC.Descriptor):
+    """Descriptor that validates against a dynamically-loaded set of permitted values.
+
+    Looks up valid values from the ValueSet registry using the element
+    class name and attribute name (e.g., ``ODM.FileType``).
+    """
+
     def __set__(self, instance, value):
         if (value is not None):
             # Pass instance for automatic version detection
@@ -414,6 +608,12 @@ class ValidValues(DESC.Descriptor):
 
 
 class ExtendedValidValues(DESC.Descriptor):
+    """Descriptor that validates against an explicit list of permitted values.
+
+    Unlike ValidValues, the allowed values are provided at class definition
+    time in the ``valid_values`` list argument.
+    """
+
     def __set__(self, instance, value):
         if (value is not None) and value not in self.valid_values:
             raise OdmlibTypeError(
@@ -427,10 +627,27 @@ class ExtendedValidValues(DESC.Descriptor):
 
 
 class ValueSetString(ValidValues, String):
+    """String descriptor that validates against a dynamically-loaded set of permitted values.
+
+    Combines string type validation with value set membership checking.
+    Used for attributes like FileType, Repeating, Mandatory, DataType, etc.
+    """
+
     pass
 
 
 class ODMObject(DESC.Descriptor):
+    """Descriptor for a single child ODM element.
+
+    Stores a reference to the element class and validates type on
+    assignment. When accessed on an unset optional attribute, instantiates
+    the element class with no arguments.
+
+    Args:
+        element_class (type): The expected child element class.
+        namespace (str): XML namespace prefix (default: "odm").
+    """
+
     def __init__(self, *args, element_class,  **kwargs):
         self.obj_type = element_class
         kwargs["element_class"] = element_class
@@ -450,6 +667,16 @@ class ODMObject(DESC.Descriptor):
 
 
 class ODMListObject(ODMObject, list):
+    """Descriptor for a list of child ODM elements.
+
+    Validates that all items assigned to the list are instances of
+    the expected element class. Stored as a plain list in the instance.
+
+    Args:
+        element_class (type): The class that all list items must be.
+        namespace (str): XML namespace prefix (default: "odm").
+    """
+
     def __set__(self, instance, value):
         if isinstance(value, list):
             for obj in value:

@@ -24,3 +24,10 @@ from odmlib.exceptions import (
 )
 from odmlib.context import open_odm, open_define
 from odmlib.builder import ODMBuilder
+from odmlib.oid_generator import DynamicOIDRef, create_oid_checker
+from odmlib.dataset_json_1_1.model import DatasetJSON, Column, SourceSystem
+from odmlib.dataset_json_1_1.define_flattener import DefineFlattener
+from odmlib.dataset_json_1_1.converter import (
+    dataset_xml_to_dataset_json,
+    dataset_json_to_dataset_xml,
+)
