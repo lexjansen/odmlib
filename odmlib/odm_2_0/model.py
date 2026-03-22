@@ -33,6 +33,53 @@ class Description(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
+class Title(OE.ODMElement):
+    _content = T.String(required=False)
+
+
+class Leaf(OE.ODMElement):
+    ID = T.ID(required=True)
+    href = T.String(required=True, namespace="xlink")
+    Title = T.ODMObject(element_class=Title)
+
+
+class PDFPageRef(OE.ODMElement):
+    Type = T.ValueSetString(required=True)
+    PageRefs = T.String()
+    FirstPage = T.PositiveInteger()
+    LastPage = T.PositiveInteger()
+
+
+class DocumentRef(OE.ODMElement):
+    leafID = T.IDRef(required=True)
+    PDFPageRef = T.ODMListObject(element_class=PDFPageRef)
+
+
+class AnnotatedCRF(OE.ODMElement):
+    DocumentRef = T.ODMObject(required=True, element_class=DocumentRef)
+
+
+class SupplementalDoc(OE.ODMElement):
+    DocumentRef = T.ODMObject(required=True, element_class=DocumentRef)
+
+
+class CommentDef(OE.ODMElement):
+    OID = T.OID(required=True)
+    Description = T.ODMObject(element_class=Description)
+    DocumentRef = T.ODMObject(element_class=DocumentRef)
+
+
+class Coding(OE.ODMElement):
+    Code = T.String(required=False)
+    System = T.String(required=True)
+    SystemName = T.String()
+    SystemVersion = T.String()
+    Label = T.String()
+    href = T.String()
+    ref = T.String()
+    CommentOID = T.OIDRef(required=False)
+
+
 class Alias(OE.ODMElement):
     """An alternative name or identifier for an ODM element in an external context.
 
@@ -72,6 +119,20 @@ class Include(OE.ODMElement):
     MetaDataVersionOID = T.OIDRef(required=True)
 
 
+class Standard(OE.ODMElement):
+    OID = T.OID(required=True)
+    Name = T.String(required=True)
+    Type = T.String(required=True)
+    PublishingSet = T.String(required=False)
+    Version = T.String(required=True)
+    Status = T.String(required=False)
+    CommentOID = T.OIDRef(required=False)
+
+
+class Standards(OE.ODMElement):
+    Standard = T.ODMListObject(required=True, element_class=Standard)
+
+
 class StudyEventRef(OE.ODMElement):
     """A reference to a StudyEventDef within a Protocol or ExceptionEvent.
 
@@ -84,10 +145,35 @@ class StudyEventRef(OE.ODMElement):
             when true, suppresses collection of this event.
     """
 
-    StudyEventOID = T.OID(required=True)
+    StudyEventOID = T.OIDRef(required=True)
     OrderNumber = T.Integer(required=False)
     Mandatory = T.ValueSetString(required=True)
     CollectionExceptionConditionOID = T.OIDRef()
+
+
+class WorkflowRef(OE.ODMElement):
+    WorkflowOID = T.OIDRef(required=True)
+
+
+class Arm(OE.ODMElement):
+    OID = T.OID(required=True)
+    Name = T.Name(required=True)
+    Description = T.ODMObject(element_class=Description)
+    WorkflowRef = T.ODMObject(element_class=WorkflowRef)
+
+
+class Epoch(OE.ODMElement):
+    OID = T.OID(required=True)
+    Name = T.Name(required=True)
+    SequenceNumber = T.PositiveInteger(required=True)
+    Description = T.ODMObject(element_class=Description)
+
+
+class StudyStructure(OE.ODMElement):
+    Description = T.ODMObject(element_class=Description)
+    Arm = T.ODMListObject(element_class=Arm)
+    Epoch = T.ODMListObject(element_class=Epoch)
+    WorkflowRef = T.ODMListObject(element_class=WorkflowRef)
 
 
 class Protocol(OE.ODMElement):
@@ -104,6 +190,7 @@ class Protocol(OE.ODMElement):
     """
 
     Description = T.ODMObject(element_class=Description)
+    StudyStructure = T.ODMObject(element_class=StudyStructure)
     StudyEventRef = T.ODMListObject(element_class=StudyEventRef)
     Alias = T.ODMListObject(element_class=Alias)
 
@@ -123,22 +210,10 @@ class ItemGroupRef(OE.ODMElement):
             when true, suppresses collection of this item group.
     """
 
-    ItemGroupOID = T.OID(required=True)
+    ItemGroupOID = T.OIDRef(required=True)
     OrderNumber = T.Integer(required=False)
     Mandatory = T.ValueSetString(required=True)
     CollectionExceptionConditionOID = T.OIDRef()
-
-
-class WorkflowRef(OE.ODMElement):
-    """A reference to a WorkflowDef from a StudyEventDef, ItemGroupDef, or StudyStructure.
-
-    Attributes:
-        WorkflowOID (str, required): OID of the referenced WorkflowDef.
-    """
-
-    WorkflowOID = T.OID(required=True)
-
-
 class StudyEventDef(OE.ODMElement):
     """ represents ODM v2.0 StudyEventDef and can serialize as JSON or XML """
 
@@ -147,6 +222,7 @@ class StudyEventDef(OE.ODMElement):
     Repeating = T.ValueSetString(required=True)
     Type = T.ValueSetString(required=True)
     Category = T.String(required=False)
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
     ItemGroupRef = T.ODMListObject(element_class=ItemGroupRef)
     WorkflowRef = T.ODMListObject(element_class=WorkflowRef)
@@ -163,9 +239,7 @@ class StudyEventDef(OE.ODMElement):
         return self.ItemGroupRef[position]
 
     def __iter__(self):
-        return iter(self.ItemGroupRef)
-
-
+return iter(self.ItemGroupRef)
 class ArchiveLayout(OE.ODMElement):
     """Describes a PDF-based presentation layout for an ODM element.
 
@@ -180,37 +254,14 @@ class ArchiveLayout(OE.ODMElement):
     PdfFileName = T.FileName(required=True)
     PresentationOID = T.OIDRef(required=False)
 
+def __len__(self):
+    return len(self.ItemGroupRef)
 
-class PDFPageRef(OE.ODMElement):
-    """Refers to one or more pages within a PDF document.
+def __getitem__(self, position):
+    return self.ItemGroupRef[position]
 
-    Attributes:
-        Type (str, required): How pages are specified; one of "PhysicalRef",
-            "NamedDestination", or "AnnotatedRegion".
-        PageRefs (str): Space-separated list of page numbers or named
-            destinations when Type is "PhysicalRef" or "NamedDestination".
-        FirstPage (int): First page of a range (used with LastPage).
-        LastPage (int): Last page of a range (used with FirstPage).
-    """
-
-    Type = T.ValueSetString(required=True)
-    PageRefs = T.String()
-    FirstPage = T.PositiveInteger()
-    LastPage = T.PositiveInteger()
-
-
-class DocumentRef(OE.ODMElement):
-    """A reference to an external document (e.g. a PDF leaf) with optional page refs.
-
-    Attributes:
-        leafID (str, required): The ID of the referenced document leaf.
-        PDFPageRef (list): Zero or more page references within the document.
-    """
-
-    leafID = T.String(required=True)
-    PDFPageRef = T.ODMListObject(element_class=PDFPageRef, namespace="def")
-
-
+def __iter__(self):
+    return iter(self.ItemGroupRef)
 class SourceItem(OE.ODMElement):
     """Identifies the source of an item's data within an Origin element.
 
@@ -256,9 +307,41 @@ class Origin(OE.ODMElement):
 
     Type = T.ValueSetString(required=True)
     Source = T.ValueSetString()
-    DocumentRef = T.ODMListObject(element_class=DocumentRef, namespace="def")
+    DocumentRef = T.ODMListObject(element_class=DocumentRef)
     Description = T.ODMObject(element_class=Description)
     SourceItems = T.ODMObject(element_class=SourceItems)
+
+
+class WhereClauseRef(OE.ODMElement):
+    WhereClauseOID = T.OIDRef(required=True)
+
+
+class CheckValue(OE.ODMElement):
+    _content = T.String(required=True)
+
+
+class FormalExpression(OE.ODMElement):
+    Context = T.String(required=True)
+    _content = T.String(required=True)
+
+
+class ErrorMessage(OE.ODMElement):
+    TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
+
+
+class RangeCheck(OE.ODMElement):
+    """ represents ODM v2.0 RangeCheck element that is a child of ItemDef and can serialize as JSON or XML """
+    Comparator = T.ValueSetString(required=False)
+    SoftHard = T.ValueSetString()
+    CheckValue = T.ODMListObject(element_class=CheckValue)
+    FormalExpression = T.ODMListObject(element_class=FormalExpression)
+    ErrorMessage = T.ODMObject(element_class=ErrorMessage)
+
+
+class WhereClauseDef(OE.ODMElement):
+    OID = T.OID(required=True)
+    CommentOID = T.OIDRef(required=False)
+    RangeCheck = T.ODMListObject(required=True, element_class=RangeCheck)
 
 
 class ItemRef(OE.ODMElement):
@@ -280,14 +363,29 @@ class ItemRef(OE.ODMElement):
         PreSpecifiedValue (str): A pre-specified value for this item.
     """
 
-    ItemOID = T.String(required=True)
-    OrderNumber = T.Integer(required=False)
+    ItemOID = T.OIDRef(required=True)
     Mandatory = T.ValueSetString(required=True)
-    KeySequence = T.Integer(required=False)
-    MethodOID = T.String(required=False)
-    Role = T.String()
-    RoleCodeListOID = T.String()
-    CollectionExceptionConditionOID = T.String()
+    Core = T.ValueSetString(required=False)
+    OrderNumber = T.PositiveInteger(required=False)
+    KeySequence = T.PositiveInteger(required=False)
+    IsNonStandard = T.ValueSetString(required=False)
+    HasNoData = T.ValueSetString(required=False)
+    MethodOID = T.OIDRef(required=False)
+    UnitsItemOID = T.OIDRef(required=False)
+    PreSpecifiedValue = T.String(required=False)
+    Repeat = T.ValueSetString(required=False)
+    Other = T.ValueSetString(required=False)
+    Role = T.String(required=False)
+    RoleCodeListOID = T.OIDRef(required=False)
+    CollectionExceptionConditionOID = T.OIDRef(required=False)
+    Origin = T.ODMListObject(element_class=Origin)
+    WhereClauseRef = T.ODMListObject(element_class=WhereClauseRef)
+
+
+class ValueListDef(OE.ODMElement):
+    OID = T.OID(required=True)
+    Description = T.ODMObject(required=False, element_class=Description)
+    ItemRef = T.ODMListObject(required=True, element_class=ItemRef)
     UnitsItemOID = T.String()
     PreSpecifiedValue = T.String()
 
@@ -298,15 +396,20 @@ class ItemGroupDef(OE.ODMElement):
     OID = T.OID(required=True)
     Name = T.Name(required=True)
     Repeating = T.ValueSetString(required=True)
-    Type = T.ValueSetString()
+    RepeatingLimit = T.PositiveInteger(required=False)
     IsReferenceData = T.ValueSetString(required=False)
-    DatasetName = T.Name()
-    Domain = T.String()
-    Purpose = T.String()
-    CommentOID = T.OIDRef()
+    DatasetName = T.Name(required=False)
+    Domain = T.String(required=False)
+    Type = T.ValueSetString(required=True)
+    Purpose = T.String(required=False)
+    StandardOID = T.OIDRef(required=False)
+    IsNonStandard = T.ValueSetString(required=False)
+    HasNoData = T.ValueSetString(required=False)
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
     ItemGroupRef = T.ODMListObject(element_class=ItemGroupRef)
     ItemRef = T.ODMListObject(element_class=ItemRef)
+    Coding = T.ODMListObject(element_class=Coding)
     WorkflowRef = T.ODMListObject(element_class=WorkflowRef)
     Origin = T.ODMListObject(element_class=Origin)
     Alias = T.ODMListObject(element_class=Alias)
@@ -319,6 +422,10 @@ class ItemGroupDef(OE.ODMElement):
 
     def __iter__(self):
         return iter(self.ItemRef)
+
+
+class Definition(OE.ODMElement):
+    TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
 class Question(OE.ODMElement):
@@ -346,6 +453,9 @@ class ExternalQuestion(OE.ODMElement):
     Code = T.String(required=False)
 
 
+class Prompt(OE.ODMElement):
+    TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
+
 class MeasurementUnitRef(OE.ODMElement):
     """A reference to a MeasurementUnit defined in the BasicDefinitions section.
 
@@ -356,6 +466,8 @@ class MeasurementUnitRef(OE.ODMElement):
 
     MeasurementUnitOID = T.String(required=True)
 
+class CRFCompletionInstructions(OE.ODMElement):
+    TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 class CheckValue(OE.ODMElement):
     """A single value used in a RangeCheck comparison.
@@ -366,6 +478,8 @@ class CheckValue(OE.ODMElement):
 
     _content = T.String(required=True)
 
+class ImplementationNotes(OE.ODMElement):
+    TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 class FormalExpression(OE.ODMElement):
     """A formal expression (e.g. a computation or condition) in a specified language.
@@ -379,15 +493,13 @@ class FormalExpression(OE.ODMElement):
     Context = T.String(required=True)
     _content = T.String(required=True)
 
-
-class ErrorMessage(OE.ODMElement):
+class CDISCNotes(OE.ODMElement):
     """A human-readable error message associated with a RangeCheck.
 
     Attributes:
         TranslatedText (list, required): One or more language-tagged text
             blocks containing the error message.
     """
-
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
@@ -399,8 +511,6 @@ class RangeCheck(OE.ODMElement):
     CheckValue = T.ODMListObject(element_class=CheckValue)
     FormalExpression = T.ODMListObject(element_class=FormalExpression)
     ErrorMessage = T.ODMObject(element_class=ErrorMessage)
-
-
 class CodeListRef(OE.ODMElement):
     """A reference from an ItemDef to its associated CodeList.
 
@@ -408,7 +518,7 @@ class CodeListRef(OE.ODMElement):
         CodeListOID (str, required): OID of the referenced CodeList.
     """
 
-    CodeListOID = T.String("CodeListOID", required=True)
+    CodeListOID = T.OIDRef("CodeListOID", required=True)
 
 
 class ItemDef(OE.ODMElement):
@@ -421,13 +531,17 @@ class ItemDef(OE.ODMElement):
     FractionDigits = T.NonNegativeInteger()
     DatasetVarName = T.Name()
     SDSVarName = T.SASName()
-    CommentOID = T.String()
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
+    Definition = T.ODMObject(element_class=Definition)
     Question = T.ODMObject(element_class=Question)
-    ExternalQuestion = T.ODMObject(element_class=ExternalQuestion)
-    MeasurementUnitRef = T.ODMListObject(element_class=MeasurementUnitRef)
+    Prompt = T.ODMObject(element_class=Prompt)
+    CRFCompletionInstructions = T.ODMObject(element_class=CRFCompletionInstructions)
+    ImplementationNotes = T.ODMObject(element_class=ImplementationNotes)
+    CDISCNotes = T.ODMObject(element_class=CDISCNotes)
     RangeCheck = T.ODMListObject(element_class=RangeCheck)
     CodeListRef = T.ODMObject(element_class=CodeListRef)
+    Coding = T.ODMListObject(element_class=Coding)
     Alias = T.ODMListObject(element_class=Alias)
 
 
@@ -447,8 +561,12 @@ class CodeListItem(OE.ODMElement):
 
     CodedValue = T.String(required=True)
     Rank = T.Float(required=False)
-    OrderNumber = T.Integer(required=False)
+    Other = T.ValueSetString(required=False)
+    OrderNumber = T.PositiveInteger(required=False)
+    CommentOID = T.OIDRef(required=False)
+    Description = T.ODMObject(element_class=Description)
     Decode = T.ODMObject(element_class=Decode)
+    Coding = T.ODMListObject(element_class=Coding)
     Alias = T.ODMListObject(element_class=Alias)
 
 
@@ -475,19 +593,18 @@ class ExternalCodeList(OE.ODMElement):
     Version = T.String(required=False)
     ref = T.String(required=False)
     href = T.String(required=False)
-
-
 class CodeList(OE.ODMElement):
     """ represents ODM v1.3.2 CodeList element that can serialize as JSON or XML """
 
     OID = T.OID(required=True)
     Name = T.Name(required=True)
     DataType = T.ValueSetString(required=True)
-    SASFormatName = T.SASFormat()
+    CommentOID = T.OIDRef(required=False)
+    StandardOID = T.OIDRef(required=False)
+    IsNonStandard = T.ValueSetString(required=False)
     Description = T.ODMObject(element_class=Description)
     CodeListItem = T.ODMListObject(element_class=CodeListItem)
-    EnumeratedItem = T.ODMListObject(element_class=EnumeratedItem)
-    ExternalCodeList = T.ODMObject(element_class=ExternalCodeList)
+    Coding = T.ODMListObject(element_class=Coding)
     Alias = T.ODMListObject(element_class=Alias)
 
 
@@ -508,6 +625,7 @@ class ConditionDef(OE.ODMElement):
 
     OID = T.OID(required=True)
     Name = T.Name(required=True)
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
     FormalExpression = T.ODMListObject(element_class=FormalExpression)
     Alias = T.ODMListObject(element_class=Alias)
@@ -563,6 +681,7 @@ class MethodDef(OE.ODMElement):
     OID = T.OID(required=True)
     Name = T.Name(required=True)
     Type = T.ValueSetString(required=True)
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(required=True, element_class=Description)
     MethodSignature = T.ODMObject(element_class=MethodSignature)
     FormalExpression = T.ODMListObject(element_class=FormalExpression)
@@ -668,8 +787,6 @@ class StudyStructure(OE.ODMElement):
     Arm = T.ODMListObject(element_class=Arm)
     Epoch = T.ODMListObject(element_class=Epoch)
     WorkflowRef = T.ODMListObject(element_class=WorkflowRef)
-
-
 class WorkflowStart(OE.ODMElement):
     """Identifies the starting point of a WorkflowDef.
 
@@ -984,10 +1101,11 @@ class MetaDataVersion(OE.ODMElement):
 
     OID = T.OID(required=True)
     Name = T.Name(required=True)
+    CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
     Include = T.ODMObject(element_class=Include)
+    Standards = T.ODMListObject(element_class=Standards)
     Protocol = T.ODMObject(element_class=Protocol)
-    StudyStructure = T.ODMObject(element_class=StudyStructure)
     WorkflowDef = T.ODMListObject(element_class=WorkflowDef)
     StudyTiming = T.ODMObject(element_class=StudyTiming)
     StudyEventGroupDef = T.ODMListObject(element_class=StudyEventGroupDef)
@@ -1285,7 +1403,7 @@ class Location(OE.ODMElement):
 
     OID = T.OID(required=True)
     Name = T.Name(required=True)
-    LocationType = T.ValueSetString()
+    Role = T.String(required=False)
     MetaDataVersionRef = T.ODMListObject(required=True, element_class=MetaDataVersionRef)
 
 
@@ -1359,47 +1477,49 @@ class Study(OE.ODMElement):
         MetaDataVersion (list): One or more versioned metadata snapshots.
     """
 
-    OID = T.String(required=True)
-    StudyName = T.String(required=True)
-    ProtocolName = T.String(required=True)
+    OID = T.OID(required=True)
+    StudyName = T.Name(required=True)
+    ProtocolName = T.Name(required=True)
+    VersionID = T.Name(required=False)
+    VersionName = T.Name(required=False)
+    Status = T.Name(required=False)
     Description = T.ODMObject(required=False, element_class=Description)
     MetaDataVersion = T.ODMListObject(required=False, element_class=MetaDataVersion)
 
 
 class ODM(OE.ODMElement):
-    """The root element of an ODM 2.0 document.
+"""The root element of an ODM 2.0 document.
 
-    The ODM element carries file-level metadata (file type, creation time,
-    originating system) and contains the Study elements that hold all
-    study data and metadata. Uses namespace
-    ``http://www.cdisc.org/ns/odm/v2.0``.
+The ODM element carries file-level metadata (file type, creation time,
+originating system) and contains the Study elements that hold all
+study data and metadata. Uses namespace
+``http://www.cdisc.org/ns/odm/v2.0``.
 
-    Attributes:
-        Description (str): A human-readable description of the file.
-        FileType (str, required): "Snapshot" for a complete file or
-            "Transactional" for an incremental update.
-        Granularity (str): Level of data included, e.g. "All", "Metadata",
-            "AdminData", "ReferenceData", "AllClinicalData".
-        Archival (str): Whether this file is intended for archival ("Yes"
-            or "No").
-        FileOID (str, required): A globally unique OID for this specific file.
-        CreationDateTime (str, required): ISO 8601 datetime when the file
-            was created.
-        PriorFileOID (str): OID of the preceding file in a sequence.
-        AsOfDateTime (str): ISO 8601 datetime indicating the currency of
-            the data.
-        ODMVersion (str): Version of the ODM standard, e.g. "2.0".
-        Originator (str): Name of the organization that created the file.
-        SourceSystem (str): Name of the software system that generated the
-            file.
-        SourceSystemVersion (str): Version of the source system.
-        Study (list): One or more Study elements.
-    """
-
-    Description = T.String(required=False)
+Attributes:
+    Description (str): A human-readable description of the file.
+    FileType (str, required): "Snapshot" for a complete file or
+        "Transactional" for an incremental update.
+    Granularity (str): Level of data included, e.g. "All", "Metadata",
+        "AdminData", "ReferenceData", "AllClinicalData".
+    Archival (str): Whether this file is intended for archival ("Yes"
+        or "No").
+    FileOID (str, required): A globally unique OID for this specific file.
+    CreationDateTime (str, required): ISO 8601 datetime when the file
+        was created.
+    PriorFileOID (str): OID of the preceding file in a sequence.
+    AsOfDateTime (str): ISO 8601 datetime indicating the currency of
+        the data.
+    ODMVersion (str): Version of the ODM standard, e.g. "2.0".
+    Originator (str): Name of the organization that created the file.
+    SourceSystem (str): Name of the software system that generated the
+        file.
+    SourceSystemVersion (str): Version of the source system.
+    Study (list): One or more Study elements.
+"""
     FileType = T.ValueSetString(required=True)
     Granularity = T.ValueSetString(required=False)
     Archival = T.ValueSetString(required=False)
+    Context = T.ValueSetString(required=False)
     FileOID = T.OID(required=True)
     CreationDateTime = T.DateTimeString(required=True)
     PriorFileOID = T.OIDRef(required=False)
@@ -1408,5 +1528,5 @@ class ODM(OE.ODMElement):
     Originator = T.String(required=False)
     SourceSystem = T.String(required=False)
     SourceSystemVersion = T.String(required=False)
-    Study = T.ODMListObject(element_class=Study)
-    # AdminData = T.ODMListObject(element_class=AdminData)
+Study = T.ODMListObject(required=False, element_class=Study)
+AdminData = T.ODMListObject(required=False, element_class=AdminData)
