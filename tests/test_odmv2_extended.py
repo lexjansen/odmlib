@@ -145,11 +145,11 @@ class TestODMv2ItemGroupDef(TestCase):
         _setup_odm2_namespaces()
 
     def test_create(self):
-        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No")
+        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No", Type="Dataset")
         self.assertEqual(igd.OID, "IG.DM")
 
     def test_add_item_refs(self):
-        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No")
+        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No", Type="Dataset")
         igd.ItemRef = [
             ODM2.ItemRef(ItemOID="IT.USUBJID", Mandatory="Yes"),
             ODM2.ItemRef(ItemOID="IT.SEX",     Mandatory="Yes"),
@@ -158,13 +158,13 @@ class TestODMv2ItemGroupDef(TestCase):
         self.assertEqual(igd[0].ItemOID, "IT.USUBJID")
 
     def test_to_xml(self):
-        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No")
+        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No", Type="Dataset")
         elem = igd.to_xml()
         self.assertEqual(elem.attrib["OID"], "IG.DM")
         self.assertEqual(elem.attrib["Repeating"], "No")
 
     def test_to_json(self):
-        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No")
+        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No", Type="Dataset")
         data = json.loads(igd.to_json())
         self.assertEqual(data["OID"], "IG.DM")
 
@@ -218,7 +218,7 @@ class TestODMv2MetaDataVersion(TestCase):
     def test_add_all_major_elements(self):
         mdv = ODM2.MetaDataVersion(OID="MDV.001", Name="Version 1")
         sed = ODM2.StudyEventDef(OID="SE.VISIT", Name="Visit", Repeating="No", Type="Scheduled")
-        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No")
+        igd = ODM2.ItemGroupDef(OID="IG.DM", Name="DM", Repeating="No", Type="Dataset")
         itd = ODM2.ItemDef(OID="IT.AGE", Name="Age", DataType="integer")
         mdv.StudyEventDef.append(sed)
         mdv.ItemGroupDef.append(igd)

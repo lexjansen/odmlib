@@ -2652,7 +2652,6 @@
             <EnumeratedItem CodedValue="Recall Of Test Instructions" OrderNumber="14"/>
             <EnumeratedItem CodedValue="Adas-Cog(11) Subscore" OrderNumber="15"/>
          </CodeList>
-
          <CodeList OID="CL.AWRANGE_ADQSADAS"
                    Name="Analysis Window Range"
                    DataType="text"
@@ -2662,8 +2661,6 @@
             <EnumeratedItem CodedValue="85-140" OrderNumber="3"/>
             <EnumeratedItem CodedValue="&gt;140" OrderNumber="4"/>
 		</CodeList>
-  
-		 
          <CodeList OID="CL.RACE"
                    Name="Race"
                    DataType="text"

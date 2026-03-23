@@ -163,6 +163,16 @@ class Arm(OE.ODMElement):
 
 
 class Epoch(OE.ODMElement):
+    """Defines a study epoch (a named period of the trial).
+
+    Attributes:
+        OID (str, required): Unique identifier.
+        Name (str, required): Human-readable name of the epoch.
+        SequenceNumber (int, required): Ordinal position of this epoch in the
+            overall trial timeline.
+        Description: Optional description.
+    """
+
     OID = T.OID(required=True)
     Name = T.Name(required=True)
     SequenceNumber = T.PositiveInteger(required=True)
@@ -170,6 +180,16 @@ class Epoch(OE.ODMElement):
 
 
 class StudyStructure(OE.ODMElement):
+    """Defines the high-level arms and epochs that constitute the study design.
+
+    Attributes:
+        Description: Optional description of the study structure.
+        Arm (list): One or more arms (treatment groups) in the trial.
+        Epoch (list): One or more epochs (time periods) in the trial.
+        WorkflowRef (list): References to workflows associated with the
+            overall study structure.
+    """
+
     Description = T.ODMObject(element_class=Description)
     Arm = T.ODMListObject(element_class=Arm)
     Epoch = T.ODMListObject(element_class=Epoch)
@@ -214,6 +234,8 @@ class ItemGroupRef(OE.ODMElement):
     OrderNumber = T.Integer(required=False)
     Mandatory = T.ValueSetString(required=True)
     CollectionExceptionConditionOID = T.OIDRef()
+
+
 class StudyEventDef(OE.ODMElement):
     """ represents ODM v2.0 StudyEventDef and can serialize as JSON or XML """
 
@@ -239,7 +261,9 @@ class StudyEventDef(OE.ODMElement):
         return self.ItemGroupRef[position]
 
     def __iter__(self):
-return iter(self.ItemGroupRef)
+        return iter(self.ItemGroupRef)
+
+
 class ArchiveLayout(OE.ODMElement):
     """Describes a PDF-based presentation layout for an ODM element.
 
@@ -254,14 +278,16 @@ class ArchiveLayout(OE.ODMElement):
     PdfFileName = T.FileName(required=True)
     PresentationOID = T.OIDRef(required=False)
 
-def __len__(self):
-    return len(self.ItemGroupRef)
+    def __len__(self):
+        return len(self.ItemGroupRef)
 
-def __getitem__(self, position):
-    return self.ItemGroupRef[position]
+    def __getitem__(self, position):
+        return self.ItemGroupRef[position]
 
-def __iter__(self):
-    return iter(self.ItemGroupRef)
+    def __iter__(self):
+        return iter(self.ItemGroupRef)
+
+
 class SourceItem(OE.ODMElement):
     """Identifies the source of an item's data within an Origin element.
 
@@ -320,17 +346,26 @@ class CheckValue(OE.ODMElement):
     _content = T.String(required=True)
 
 
-class FormalExpression(OE.ODMElement):
-    Context = T.String(required=True)
-    _content = T.String(required=True)
-
-
 class ErrorMessage(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
+class FormalExpression(OE.ODMElement):
+    """A formal expression (e.g. a computation or condition) in a specified language.
+
+    Attributes:
+        Context (str, required): The language or context of the expression,
+            e.g. an XPath version string.
+        _content (str, required): The expression text.
+    """
+
+    Context = T.String(required=True)
+    _content = T.String(required=True)
+
+
 class RangeCheck(OE.ODMElement):
     """ represents ODM v2.0 RangeCheck element that is a child of ItemDef and can serialize as JSON or XML """
+
     Comparator = T.ValueSetString(required=False)
     SoftHard = T.ValueSetString()
     CheckValue = T.ODMListObject(element_class=CheckValue)
@@ -386,8 +421,6 @@ class ValueListDef(OE.ODMElement):
     OID = T.OID(required=True)
     Description = T.ODMObject(required=False, element_class=Description)
     ItemRef = T.ODMListObject(required=True, element_class=ItemRef)
-    UnitsItemOID = T.String()
-    PreSpecifiedValue = T.String()
 
 
 class ItemGroupDef(OE.ODMElement):
@@ -439,32 +472,34 @@ class Question(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
-class ExternalQuestion(OE.ODMElement):
-    """A reference to a question defined in an external dictionary or instrument.
-
-    Attributes:
-        Dictionary (str): Name of the external dictionary or instrument.
-        Version (str): Version of the dictionary or instrument.
-        Code (str): Code that identifies the question within the dictionary.
-    """
-
-    Dictionary = T.String(required=False)
-    Version = T.String(required=False)
-    Code = T.String(required=False)
+# TODO Deprecated
+# class ExternalQuestion(OE.ODMElement):
+#     """A reference to a question defined in an external dictionary or instrument.
+#
+#     Attributes:
+#         Dictionary (str): Name of the external dictionary or instrument.
+#         Version (str): Version of the dictionary or instrument.
+#         Code (str): Code that identifies the question within the dictionary.
+#     """
+#
+#     Dictionary = T.String(required=False)
+#     Version = T.String(required=False)
+#     Code = T.String(required=False)
 
 
 class Prompt(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
-class MeasurementUnitRef(OE.ODMElement):
-    """A reference to a MeasurementUnit defined in the BasicDefinitions section.
-
-    Attributes:
-        MeasurementUnitOID (str, required): OID of the referenced
-            MeasurementUnit.
-    """
-
-    MeasurementUnitOID = T.String(required=True)
+# TODO Deprecated
+# class MeasurementUnitRef(OE.ODMElement):
+#     """A reference to a MeasurementUnit defined in the BasicDefinitions section.
+#
+#     Attributes:
+#         MeasurementUnitOID (str, required): OID of the referenced
+#             MeasurementUnit.
+#     """
+#
+#     MeasurementUnitOID = T.String(required=True)
 
 class CRFCompletionInstructions(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
@@ -478,20 +513,10 @@ class CheckValue(OE.ODMElement):
 
     _content = T.String(required=True)
 
+
 class ImplementationNotes(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
-class FormalExpression(OE.ODMElement):
-    """A formal expression (e.g. a computation or condition) in a specified language.
-
-    Attributes:
-        Context (str, required): The language or context of the expression,
-            e.g. an XPath version string.
-        _content (str, required): The expression text.
-    """
-
-    Context = T.String(required=True)
-    _content = T.String(required=True)
 
 class CDISCNotes(OE.ODMElement):
     """A human-readable error message associated with a RangeCheck.
@@ -503,14 +528,6 @@ class CDISCNotes(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
 
-class RangeCheck(OE.ODMElement):
-    """ represents ODM v2.0 RangeCheck element that is a child of ItemDef and can serialize as JSON or XML """
-
-    Comparator = T.ValueSetString(required=False)
-    SoftHard = T.ValueSetString()
-    CheckValue = T.ODMListObject(element_class=CheckValue)
-    FormalExpression = T.ODMListObject(element_class=FormalExpression)
-    ErrorMessage = T.ODMObject(element_class=ErrorMessage)
 class CodeListRef(OE.ODMElement):
     """A reference from an ItemDef to its associated CodeList.
 
@@ -570,31 +587,24 @@ class CodeListItem(OE.ODMElement):
     Alias = T.ODMListObject(element_class=Alias)
 
 
-class EnumeratedItem(OE.ODMElement):
-    """ represents ODM EnumeratedItem element that is a child of CodeList and can serialize as JSON or XML """
+# TODO Deprecated
+# class ExternalCodeList(OE.ODMElement):
+#     """A reference to a code list defined externally, outside the ODM document.
+#
+#     Attributes:
+#         Dictionary (str): Name of the external dictionary or terminology.
+#         Version (str): Version of the external dictionary.
+#         ref (str): A reference identifier within the external dictionary.
+#         href (str): A URL pointing to the external code list resource.
+#     """
+#
+#     Dictionary = T.String(required=False)
+#     Version = T.String(required=False)
+#     ref = T.String(required=False)
+#     href = T.String(required=False)
 
-    CodedValue = T.String(required=True)
-    Rank = T.Float(required=False)
-    OrderNumber = T.Integer(required=False)
-    Alias = T.ODMListObject(element_class=Alias)
-
-
-class ExternalCodeList(OE.ODMElement):
-    """A reference to a code list defined externally, outside the ODM document.
-
-    Attributes:
-        Dictionary (str): Name of the external dictionary or terminology.
-        Version (str): Version of the external dictionary.
-        ref (str): A reference identifier within the external dictionary.
-        href (str): A URL pointing to the external code list resource.
-    """
-
-    Dictionary = T.String(required=False)
-    Version = T.String(required=False)
-    ref = T.String(required=False)
-    href = T.String(required=False)
 class CodeList(OE.ODMElement):
-    """ represents ODM v1.3.2 CodeList element that can serialize as JSON or XML """
+    """ represents ODM CodeList element that can serialize as JSON or XML """
 
     OID = T.OID(required=True)
     Name = T.Name(required=True)
@@ -755,38 +765,6 @@ class Arm(OE.ODMElement):
     WorkflowRef = T.ODMObject(element_class=WorkflowRef)
 
 
-class Epoch(OE.ODMElement):
-    """Defines a study epoch (a named period of the trial).
-
-    Attributes:
-        OID (str, required): Unique identifier.
-        Name (str, required): Human-readable name of the epoch.
-        SequenceNumber (int, required): Ordinal position of this epoch in the
-            overall trial timeline.
-        Description: Optional description.
-    """
-
-    OID = T.OID(required=True)
-    Name = T.Name(required=True)
-    SequenceNumber = T.PositiveInteger(required=True)
-    Description = T.ODMObject(element_class=Description)
-
-
-class StudyStructure(OE.ODMElement):
-    """Defines the high-level arms and epochs that constitute the study design.
-
-    Attributes:
-        Description: Optional description of the study structure.
-        Arm (list): One or more arms (treatment groups) in the trial.
-        Epoch (list): One or more epochs (time periods) in the trial.
-        WorkflowRef (list): References to workflows associated with the
-            overall study structure.
-    """
-
-    Description = T.ODMObject(element_class=Description)
-    Arm = T.ODMListObject(element_class=Arm)
-    Epoch = T.ODMListObject(element_class=Epoch)
-    WorkflowRef = T.ODMListObject(element_class=WorkflowRef)
 class WorkflowStart(OE.ODMElement):
     """Identifies the starting point of a WorkflowDef.
 
@@ -1117,7 +1095,7 @@ class MetaDataVersion(OE.ODMElement):
     MethodDef = T.ODMListObject(element_class=MethodDef)
 
 
-class LoginName(OE.ODMElement):
+class UserName(OE.ODMElement):
     """The login name (username) used by a User to authenticate.
 
     Attributes:
@@ -1147,7 +1125,7 @@ class FullName(OE.ODMElement):
     _content = T.String(required=True)
 
 
-class FirstName(OE.ODMElement):
+class GivenName(OE.ODMElement):
     """The first (given) name of a User.
 
     Attributes:
@@ -1157,7 +1135,7 @@ class FirstName(OE.ODMElement):
     _content = T.String(required=True)
 
 
-class LastName(OE.ODMElement):
+class FamilyName(OE.ODMElement):
     """The last (family) name of a User.
 
     Attributes:
@@ -1320,14 +1298,28 @@ class LocationRef(OE.ODMElement):
     LocationOID = T.OIDRef(required=True)
 
 
-class Certificate(OE.ODMElement):
-    """A digital certificate associated with a User for signature purposes.
+# TODO deprecated
+# class Certificate(OE.ODMElement):
+#     """A digital certificate associated with a User for signature purposes.
+#
+#     Attributes:
+#         _content (str, required): The certificate data (typically base64-encoded).
+#     """
+#
+#     _content = T.String(required=True)
 
-    Attributes:
-        _content (str, required): The certificate data (typically base64-encoded).
-    """
 
-    _content = T.String(required=True)
+class Image(OE.ODMElement):
+    """An image associated with a User."""
+    ImageFileName = T.FileName(required=False)
+    href = T.String(required=False)
+    MimeType = T.String(required=False)
+
+# TODO ensure the type information for TelecomType is there
+class Telecom(OE.ODMElement):
+    """Telecommunications contact information for a User."""
+    TelecomType = T.ValueSetString(required=True)
+    value = T.String(required=True)
 
 
 class User(OE.ODMElement):
@@ -1340,11 +1332,11 @@ class User(OE.ODMElement):
         OID (str, required): Unique identifier.
         UserType (str): Role category of the user, e.g. "Sponsor",
             "Investigator", "Lab", "Other".
-        LoginName: The user's login name.
+        UserName: The user's login name.
         DisplayName: Name shown in user interfaces.
         FullName: Full legal name.
-        FirstName: Given name.
-        LastName: Family name.
+        GivenName: Given (first) name.
+        FamilyName: Family (last) name.
         Organization: Affiliated organization.
         Address (list): One or more postal addresses.
         Email (list): One or more email addresses.
@@ -1357,19 +1349,18 @@ class User(OE.ODMElement):
 
     OID = T.OID(required=True)
     UserType = T.ValueSetString()
-    LoginName = T.ODMObject(element_class=LoginName)
+    OrganizationOID = T.OIDRef()
+    LocationOID = T.OIDRef()
+    UserName = T.ODMObject(element_class=UserName)
+    Prefix = T.String()
+    Suffix = T.String()
     DisplayName = T.ODMObject(element_class=DisplayName)
     FullName = T.ODMObject(element_class=FullName)
-    FirstName = T.ODMObject(element_class=FirstName)
-    LastName = T.ODMObject(element_class=LastName)
-    Organization = T.ODMObject(element_class=Organization)
+    GivenName = T.ODMObject(element_class=GivenName)
+    FamilyName = T.ODMObject(element_class=FamilyName)
+    Image = T.ODMObject(element_class=Image)
     Address = T.ODMListObject(element_class=Address)
-    Email = T.ODMListObject(element_class=Email)
-    Pager = T.ODMObject(element_class=Pager)
-    Fax = T.ODMListObject(element_class=Fax)
-    Phone = T.ODMListObject(element_class=Phone)
-    LocationRef = T.ODMListObject(element_class=LocationRef)
-    Certificate = T.ODMListObject(element_class=Certificate)
+    Telecom = T.ODMListObject(element_class=Telecom)
 
 
 class MetaDataVersionRef(OE.ODMElement):
@@ -1488,34 +1479,36 @@ class Study(OE.ODMElement):
 
 
 class ODM(OE.ODMElement):
-"""The root element of an ODM 2.0 document.
+    """The root element of an ODM 2.0 document.
 
-The ODM element carries file-level metadata (file type, creation time,
-originating system) and contains the Study elements that hold all
-study data and metadata. Uses namespace
-``http://www.cdisc.org/ns/odm/v2.0``.
+    The ODM element carries file-level metadata (file type, creation time,
+    originating system) and contains the Study elements that hold all
+    study data and metadata. Uses namespace
+    ``http://www.cdisc.org/ns/odm/v2.0``.
 
-Attributes:
-    Description (str): A human-readable description of the file.
-    FileType (str, required): "Snapshot" for a complete file or
-        "Transactional" for an incremental update.
-    Granularity (str): Level of data included, e.g. "All", "Metadata",
-        "AdminData", "ReferenceData", "AllClinicalData".
-    Archival (str): Whether this file is intended for archival ("Yes"
-        or "No").
-    FileOID (str, required): A globally unique OID for this specific file.
-    CreationDateTime (str, required): ISO 8601 datetime when the file
-        was created.
-    PriorFileOID (str): OID of the preceding file in a sequence.
-    AsOfDateTime (str): ISO 8601 datetime indicating the currency of
-        the data.
-    ODMVersion (str): Version of the ODM standard, e.g. "2.0".
-    Originator (str): Name of the organization that created the file.
-    SourceSystem (str): Name of the software system that generated the
-        file.
-    SourceSystemVersion (str): Version of the source system.
-    Study (list): One or more Study elements.
-"""
+    Attributes:
+        Description (str): A human-readable description of the file.
+        FileType (str, required): "Snapshot" for a complete file or
+            "Transactional" for an incremental update.
+        Granularity (str): Level of data included, e.g. "All", "Metadata",
+            "AdminData", "ReferenceData", "AllClinicalData".
+        Archival (str): Whether this file is intended for archival ("Yes"
+            or "No").
+        FileOID (str, required): A globally unique OID for this specific file.
+        CreationDateTime (str, required): ISO 8601 datetime when the file
+            was created.
+        PriorFileOID (str): OID of the preceding file in a sequence.
+        AsOfDateTime (str): ISO 8601 datetime indicating the currency of
+            the data.
+        ODMVersion (str): Version of the ODM standard, e.g. "2.0".
+        Originator (str): Name of the organization that created the file.
+        SourceSystem (str): Name of the software system that generated the
+            file.
+        SourceSystemVersion (str): Version of the source system.
+        Description (Description): Human-readable description of the file.
+        Study (list): One or more Study elements.
+        AdminData: Administrative data for the study.
+    """
     FileType = T.ValueSetString(required=True)
     Granularity = T.ValueSetString(required=False)
     Archival = T.ValueSetString(required=False)
@@ -1528,5 +1521,9 @@ Attributes:
     Originator = T.String(required=False)
     SourceSystem = T.String(required=False)
     SourceSystemVersion = T.String(required=False)
-Study = T.ODMListObject(required=False, element_class=Study)
-AdminData = T.ODMListObject(required=False, element_class=AdminData)
+    Description = T.ODMObject(required=False, element_class=Description)
+    Study = T.ODMListObject(required=False, element_class=Study)
+    AdminData = T.ODMListObject(required=False, element_class=AdminData)
+    # ReferenceData = T.ODMListObject(element_class=ReferenceData)
+    # ClinicalData = T.ODMListObject(element_class=ClinicalData)
+    # Association = T.ODMListObject(element_class=Association)

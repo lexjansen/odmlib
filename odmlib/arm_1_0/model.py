@@ -3,7 +3,8 @@ import odmlib.odm_element as OE
 import odmlib.typed as T
 import odmlib.ns_registry as NS
 
-NS.NamespaceRegistry(prefix="arm", uri="http://www.cdisc.org/ns/arm/v1.0")
+NS.NamespaceRegistry(prefix="arm", uri="http://www.cdisc.org/ns/arm/v1.0", is_default=True)
+# NS.NamespaceRegistry(prefix="def", uri="http://www.cdisc.org/ns/def/v2.1")
 
 class Description(DEF.Description):
     TranslatedText = DEF.Description.TranslatedText
