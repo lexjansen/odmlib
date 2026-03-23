@@ -1,10 +1,12 @@
-"""Facade loader for ODM and Define-XML documents.
+"""Facade loader for ODM, Define-XML, and ARM documents.
 
 This module provides :class:`ODMLoader`, a unified interface that wraps
 any specialized loader (:class:`~odmlib.odm_loader.XMLODMLoader`,
 :class:`~odmlib.odm_loader.JSONODMLoader`,
-:class:`~odmlib.define_loader.XMLDefineLoader`, or
-:class:`~odmlib.define_loader.JSONDefineLoader`) and delegates all
+:class:`~odmlib.define_loader.XMLDefineLoader`,
+:class:`~odmlib.define_loader.JSONDefineLoader`,
+:class:`~odmlib.arm_loader.XMLArmLoader`, or
+:class:`~odmlib.arm_loader.JSONArmLoader`) and delegates all
 document loading operations to it.
 """
 from __future__ import annotations
@@ -18,8 +20,10 @@ class ODMLoader:
 
     Wraps a specialized loader (:class:`~odmlib.odm_loader.XMLODMLoader`,
     :class:`~odmlib.odm_loader.JSONODMLoader`,
-    :class:`~odmlib.define_loader.XMLDefineLoader`, or
-    :class:`~odmlib.define_loader.JSONDefineLoader`) and delegates
+    :class:`~odmlib.define_loader.XMLDefineLoader`,
+    :class:`~odmlib.define_loader.JSONDefineLoader`,
+    :class:`~odmlib.arm_loader.XMLArmLoader`, or
+    :class:`~odmlib.arm_loader.JSONArmLoader`) and delegates
     all operations to it.
 
     Args:
@@ -45,7 +49,7 @@ class ODMLoader:
                 "odm_loader argument must implement DocumentLoader",
                 expected_type="DocumentLoader",
                 actual_value=type(odm_loader).__name__,
-                hint="Pass an instance of XMLODMLoader, JSONODMLoader, XMLDefineLoader, or JSONDefineLoader",
+                hint="Pass an instance of XMLODMLoader, JSONODMLoader, XMLDefineLoader, JSONDefineLoader, XMLArmLoader, or JSONArmLoader",
             )
         self.loader = odm_loader
 

@@ -18,6 +18,7 @@ documents and extensions including Define-XML, Dataset-XML, and CT-XML.
 | Define-XML 2.1 | `odmlib.define_2_1` | Stable |
 | Dataset-XML 1.0.1 | `odmlib.dataset_1_0_1` | Stable |
 | CT-XML 1.1.1 | `odmlib.ct_1_1_1` | Stable |
+| ARM 1.0 | `odmlib.arm_1_0` | Stable |
 | Dataset-JSON v1.1 | `odmlib.dataset_json_1_1` | Stable |
 | Dataset-JSON (legacy) | `odmlib.dataset_json` | Deprecated |
 
@@ -39,6 +40,23 @@ for item_group in mdv.ItemGroupDef:
 
 # Find a specific element
 item = mdv.find("ItemDef", "OID", "IT.AGE")
+```
+
+### Load an ARM-extended Define-XML (ADaM)
+
+```python
+import odmlib.arm_loader as AL
+import odmlib.loader as LD
+
+loader = LD.ODMLoader(AL.XMLArmLoader())
+loader.open_odm_document("define-adam.xml")
+mdv = loader.MetaDataVersion()
+
+# Access analysis result displays
+for rd in mdv.AnalysisResultDisplays:
+    print(f"{rd.OID}: {rd.Name}")
+    for ar in rd.AnalysisResult:
+        print(f"  Result: {ar.OID} ({ar.AnalysisPurpose})")
 ```
 
 ### Create an ODM document

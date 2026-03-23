@@ -99,6 +99,29 @@ ODM_20_SKIP_ATTRS: list[str] = [
 ]
 ODM_20_SKIP_ELEMS: list[str] = ["ODM"]
 
+# ---------------------------------------------------------------------------
+# ARM 1.0 (Analysis Results Metadata)
+# ---------------------------------------------------------------------------
+# ARM extends Define-XML 2.1 and inherits its skip configuration.
+# Additionally, ParameterOID in AnalysisResult references an ItemDef
+# but uses a non-standard naming pattern (not ending in "OID" of the
+# target element type), so the dynamic generator handles it via the
+# standard OIDRef detection.
+
+ARM_10_SKIP_ATTRS: list[str] = [
+    "FileOID",
+    "PriorFileOID",
+    "StudyOID",
+    "MetaDataVersionOID",
+    "ItemGroupOID",
+]
+ARM_10_SKIP_ELEMS: list[str] = [
+    "ODM",
+    "Study",
+    "MetaDataVersion",
+    "ItemGroupDef",
+]
+
 
 # ---------------------------------------------------------------------------
 # Lookup helper
@@ -109,6 +132,7 @@ _CONFIGS: dict[str, tuple[list[str], list[str]]] = {
     "define_2_0": (DEFINE_20_SKIP_ATTRS, DEFINE_20_SKIP_ELEMS),
     "define_2_1": (DEFINE_21_SKIP_ATTRS, DEFINE_21_SKIP_ELEMS),
     "odm_2_0": (ODM_20_SKIP_ATTRS, ODM_20_SKIP_ELEMS),
+    "arm_1_0": (ARM_10_SKIP_ATTRS, ARM_10_SKIP_ELEMS),
 }
 
 
