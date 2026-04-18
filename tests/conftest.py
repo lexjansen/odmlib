@@ -155,6 +155,36 @@ def odmv2_xml(test_data_dir):
 
 
 # ---------------------------------------------------------------------------
+# Permissive mode helpers
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def permissive_mode():
+    """Activate fully permissive mode for the duration of a test."""
+    import odmlib.mode as _mode
+    with _mode.permissive():
+        yield
+
+
+@pytest.fixture
+def nonconformant_odm_xml(test_data_dir):
+    """Path to intentionally broken ODM 1.3.2 XML test file."""
+    return os.path.join(test_data_dir, "nonconformant_odm.xml")
+
+
+@pytest.fixture
+def nonconformant_odm_json(test_data_dir):
+    """Path to intentionally broken ODM 1.3.2 JSON test file."""
+    return os.path.join(test_data_dir, "nonconformant_odm.json")
+
+
+@pytest.fixture
+def nonconformant_define21_xml(test_data_dir):
+    """Path to intentionally broken Define-XML 2.1 test file."""
+    return os.path.join(test_data_dir, "nonconformant_define21.xml")
+
+
+# ---------------------------------------------------------------------------
 # Loader factories
 # ---------------------------------------------------------------------------
 

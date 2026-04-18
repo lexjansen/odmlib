@@ -123,7 +123,7 @@ class OIDRef:
         self.ref_def["ArchiveLayoutOID"] = "ArchiveLayout"
         self.ref_def["MeasurementUnitOID"] = "MeasurementUnit"
         self.ref_def["UserOID"] = "User"
-        self.ref_def["SignatureOID"] = "SignatureRef"
+        self.ref_def["SignatureOID"] = "Signature"
 
     def _init_def_ref(self):
         self.def_ref["MetaDataVersion"] = ["MetaDataVersionOID"]

@@ -11,6 +11,7 @@ class TestValueSetLoader(TestCase):
         # Clear cache before each test for isolation
         VS.ValueSetLoader._cache = None
         VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
 
     def test_load_valuesets_caching(self):
         """Test that valuesets are loaded once and cached"""
@@ -64,6 +65,7 @@ class TestValueSet(TestCase):
         # Clear cache before each test
         VS.ValueSetLoader._cache = None
         VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
 
     def test_value_set_backward_compatibility(self):
         """Test backward compatibility - calling without version defaults to odm_1_3_2"""
@@ -113,11 +115,19 @@ class TestValueSet(TestCase):
         seg_ref_values = VS.ValueSet.value_set("StudyEventGroupRef.Mandatory", version='odm_2_0')
         self.assertEqual(seg_ref_values, ["Yes", "No"])
 
-    def test_odm_1_3_2_specific_attributes(self):
-        """Test that ODM 1.3.2 has Define-XML specific attributes"""
-        # ODM 1.3.2 / Define-XML specific
+    def test_odm_1_3_2_define_version_is_regex(self):
+        """Test that DefineVersion is now a regex dict, not a list"""
         define_version = VS.ValueSet.value_set("MetaDataVersion.DefineVersion", version='odm_1_3_2')
-        self.assertEqual(define_version, ["2.0.0", "2.0", "2.1.0", "2.1"])
+        self.assertIsInstance(define_version, dict)
+        self.assertIn("_regex", define_version)
+        self.assertIn("_description", define_version)
+
+    def test_value_set_returns_regex_dict(self):
+        """Test that value_set() returns dict for regex entries across all versions"""
+        for version in ['odm_1_3_2', 'define_2_0', 'define_2_1', 'ct_1_1_1', 'dataset_1_0_1']:
+            entry = VS.ValueSet.value_set("MetaDataVersion.DefineVersion", version=version)
+            self.assertIsInstance(entry, dict, f"Expected dict for {version}")
+            self.assertIn("_regex", entry)
 
     def test_error_unknown_attribute(self):
         """Test error handling for unknown attribute"""
@@ -146,6 +156,110 @@ class TestValueSet(TestCase):
         self.assertEqual(odm_1_3_2_datatypes, odm_2_0_datatypes)
 
 
+class TestValueSetValidate(TestCase):
+    """Test ValueSet.validate() method"""
+
+    def setUp(self):
+        VS.ValueSetLoader._cache = None
+        VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
+
+    def test_validate_list_attribute_valid(self):
+        """Test validate() returns True for valid list values"""
+        self.assertTrue(VS.ValueSet.validate("StudyEventDef.Repeating", "Yes"))
+        self.assertTrue(VS.ValueSet.validate("StudyEventDef.Repeating", "No"))
+
+    def test_validate_list_attribute_invalid(self):
+        """Test validate() returns False for invalid list values"""
+        self.assertFalse(VS.ValueSet.validate("StudyEventDef.Repeating", "Invalid"))
+        self.assertFalse(VS.ValueSet.validate("StudyEventDef.Repeating", ""))
+        self.assertFalse(VS.ValueSet.validate("StudyEventDef.Repeating", "yes"))
+
+    def test_validate_regex_valid(self):
+        """Test validate() returns True for values matching DefineVersion regex"""
+        valid_versions = ["2.0", "2.1", "2.0.0", "2.1.0", "2.1.18", "2.0.99", "2.1.101"]
+        for ver in valid_versions:
+            self.assertTrue(
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='odm_1_3_2'),
+                f"Expected '{ver}' to be valid"
+            )
+
+    def test_validate_regex_invalid(self):
+        """Test validate() returns False for values not matching DefineVersion regex"""
+        invalid_versions = ["abc", "1.0", "3.0.1", "3.0.0", "0.1.0", "3.0", ".1", "2.", "2.1.", ""]
+        for ver in invalid_versions:
+            self.assertFalse(
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='odm_1_3_2'),
+                f"Expected '{ver}' to be invalid"
+            )
+
+    def test_validate_regex_across_versions(self):
+        """Test regex validation works for all versions that have DefineVersion"""
+        for version in ['odm_1_3_2', 'define_2_0', 'define_2_1', 'ct_1_1_1', 'dataset_1_0_1']:
+            self.assertTrue(
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.1.18", version=version),
+                f"Expected '2.1.18' to be valid for {version}"
+            )
+            self.assertFalse(
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", "3.0", version=version),
+                f"Expected '3.0' to be invalid for {version}"
+            )
+
+    def test_validate_regex_cache(self):
+        """Test that compiled regex patterns are cached"""
+        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2')
+        self.assertIn(('odm_1_3_2', 'MetaDataVersion.DefineVersion'),
+                       VS.ValueSet._compiled_regex_cache)
+
+    def test_regex_cache_cleared_on_reset(self):
+        """Test that clearing _cache also allows fresh regex cache"""
+        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2')
+        self.assertTrue(len(VS.ValueSet._compiled_regex_cache) > 0)
+
+        # Simulating cache reset as done in setUp
+        VS.ValueSet._compiled_regex_cache.clear()
+        self.assertEqual(len(VS.ValueSet._compiled_regex_cache), 0)
+
+        # Should still work after clearing
+        self.assertTrue(VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2'))
+
+
+class TestValueSetDescribe(TestCase):
+    """Test ValueSet.describe() method"""
+
+    def setUp(self):
+        VS.ValueSetLoader._cache = None
+        VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
+
+    def test_describe_list_attribute(self):
+        """Test describe() for list-based attributes"""
+        desc = VS.ValueSet.describe("StudyEventDef.Repeating", version='odm_1_3_2')
+        self.assertIn("Value must be one of:", desc)
+        self.assertIn("Yes", desc)
+        self.assertIn("No", desc)
+
+    def test_describe_regex_with_description(self):
+        """Test describe() returns _description for regex entries"""
+        desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='odm_1_3_2')
+        self.assertIn("Define-XML version 2.0 or 2.1", desc)
+
+    def test_describe_regex_no_description(self):
+        """Test describe() falls back to pattern when _description is absent"""
+        # Temporarily modify the cached entry to remove _description
+        VS.ValueSetLoader.load_valuesets()
+        original = VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion']
+        try:
+            VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion'] = {
+                "_regex": "^2\\.[01](\\.\\d+)?$"
+            }
+            desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='odm_1_3_2')
+            self.assertIn("Value must match pattern:", desc)
+            self.assertIn("^2\\.[01]", desc)
+        finally:
+            VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion'] = original
+
+
 class TestValueSetIntegration(TestCase):
     """Integration tests with actual ODM model classes"""
 
@@ -153,6 +267,7 @@ class TestValueSetIntegration(TestCase):
         # Clear cache before each test
         VS.ValueSetLoader._cache = None
         VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
 
     def test_odm_1_3_2_validation(self):
         """Test that ODM 1.3.2 models validate correctly"""
@@ -190,3 +305,30 @@ class TestValueSetIntegration(TestCase):
         expected_types = ["text", "integer", "float", "date", "time", "datetime", "string", "boolean"]
         for expected_type in expected_types:
             self.assertIn(expected_type, data_types)
+
+    def test_integration_define_version_regex(self):
+        """Test DefineVersion regex validation via model instantiation"""
+        import odmlib.define_2_1.model as DEF21
+
+        # Valid DefineVersion values should work
+        mdv = DEF21.MetaDataVersion(OID="MDV1", Name="Test", DefineVersion="2.1.0")
+        self.assertEqual(mdv.DefineVersion, "2.1.0")
+
+        mdv.DefineVersion = "2.1.18"
+        self.assertEqual(mdv.DefineVersion, "2.1.18")
+
+        mdv.DefineVersion = "2.0"
+        self.assertEqual(mdv.DefineVersion, "2.0")
+
+        mdv.DefineVersion = "2.0.99"
+        self.assertEqual(mdv.DefineVersion, "2.0.99")
+
+        # Invalid DefineVersion should raise error
+        with self.assertRaises(TypeError):
+            mdv.DefineVersion = "abc"
+
+        with self.assertRaises(TypeError):
+            mdv.DefineVersion = "3.0"
+
+        with self.assertRaises(TypeError):
+            mdv.DefineVersion = "1.0"

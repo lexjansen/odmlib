@@ -22,63 +22,59 @@ Creating a Dataset-JSON document
 
 .. code-block:: python
 
-    from odmlib.dataset_json import DatasetJSON, Dataset, ItemMetadata
+    from odmlib.dataset_json_1_1 import DatasetJSON, Column
 
-    # Create the root document
-    dsjson = DatasetJSON(
-        fileOID="ODM.DATASET.001",
-        creationDateTime="2024-01-15T12:00:00",
+    # Create columns
+    columns = [
+        Column(itemOID="IT.STUDYID", name="STUDYID", label="Study Identifier", dataType="string"),
+        Column(itemOID="IT.USUBJID", name="USUBJID", label="Unique Subject Identifier", dataType="string"),
+        Column(itemOID="IT.AETERM", name="AETERM", label="Reported Term for the AE", dataType="string"),
+        Column(itemOID="IT.AESEQ", name="AESEQ", label="Sequence Number", dataType="integer"),
+    ]
+
+    # Create the dataset
+    ae = DatasetJSON(
+        datasetJSONCreationDateTime="2024-01-15T12:00:00",
+        datasetJSONVersion="1.1.0",
+        fileOID="ODM.DATASET.AE",
         studyOID="CDISC01",
         metaDataVersionOID="MDV.001",
         originator="ACME Corp",
+        name="AE",
+        label="Adverse Events",
+        columns=columns,
+        records=10,
+        rows=[
+            ["CDISC01", "CDISC01-001", "Headache", 1],
+            ["CDISC01", "CDISC01-001", "Nausea", 2],
+        ],
     )
-
-    # Define columns for the AE dataset
-    items = [
-        ItemMetadata(OID="IT.STUDYID", name="STUDYID", label="Study Identifier", type="string"),
-        ItemMetadata(OID="IT.USUBJID", name="USUBJID", label="Unique Subject Identifier", type="string"),
-        ItemMetadata(OID="IT.AETERM",  name="AETERM",  label="Reported Term for the AE", type="string"),
-        ItemMetadata(OID="IT.AESEQ",   name="AESEQ",   label="Sequence Number", type="integer"),
-    ]
-
-    # Create the AE dataset and add data rows
-    ae_ds = Dataset(name="AE", label="Adverse Events", items=items)
-    ae_ds.add_record(["CDISC01", "CDISC01-001", "Headache", 1])
-    ae_ds.add_record(["CDISC01", "CDISC01-001", "Nausea",   2])
-
-    dsjson.add_dataset(ae_ds)
-
-    # Write to file
-    dsjson.write_json("ae_dataset.json", indent=2)
+    ae.write_json("ae_dataset.json")
 
 Reading a Dataset-JSON file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
-    from odmlib.dataset_json import DatasetJSON
+    from odmlib.dataset_json_1_1 import DatasetJSON
 
-    dsjson = DatasetJSON.read_json("ae_dataset.json")
-    print(f"File OID: {dsjson.fileOID}")
-    print(f"Datasets: {[ds.name for ds in dsjson.datasets]}")
-
-    ae = dsjson.get_dataset("AE")
-    print(f"AE columns: {ae.item_names}")
-    print(f"AE rows: {len(ae)}")
-    print(f"First row: {ae.records[0].values}")
+    ae = DatasetJSON.read_json("ae_dataset.json")
+    print(f"File OID: {ae.fileOID}")
+    print(f"Columns: {ae.column_names}")
+    print(f"Rows: {len(ae.rows)}")
 
 Converting from Dataset-XML
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :func:`odmlib.dataset_json.converter.dataset_xml_to_json` to convert
-an odmlib Dataset-XML 1.0.1 object to Dataset-JSON:
+Use :func:`odmlib.dataset_json_1_1.converter.dataset_xml_to_dataset_json` to convert
+an odmlib Dataset-XML 1.0.1 object to Dataset-JSON v1.1:
 
 .. code-block:: python
 
     import odmlib.odm_loader as OL
     import odmlib.loader as LD
     import odmlib.ns_registry as NS
-    from odmlib.dataset_json.converter import dataset_xml_to_json
+    from odmlib.dataset_json_1_1.converter import dataset_xml_to_dataset_json
 
     # Set up namespaces for Dataset-XML
     NS.NamespaceRegistry(prefix="odm",  uri="http://www.cdisc.org/ns/odm/v1.3",
@@ -93,16 +89,17 @@ an odmlib Dataset-XML 1.0.1 object to Dataset-JSON:
     loader.open_odm_document("ae.xml")
     odm = loader.root()
 
-    # Convert to Dataset-JSON
-    dsjson = dataset_xml_to_json(odm)
-    dsjson.write_json("ae_dataset.json")
+    # Convert to Dataset-JSON v1.1 (returns dict of dataset name -> DatasetJSON)
+    datasets = dataset_xml_to_dataset_json(odm)
+    for name, ds in datasets.items():
+        ds.write_json(f"{name}_dataset.json")
 
 Optionally pass a Define-XML MetaDataVersion to enrich column metadata
 (labels, types, lengths):
 
 .. code-block:: python
 
-    from odmlib.dataset_json.converter import dataset_xml_to_json
+    from odmlib.dataset_json_1_1.converter import dataset_xml_to_dataset_json
 
     # Load Define-XML for metadata enrichment
     define_loader = LD.ODMLoader(DL.XMLDefineLoader(model_package="define_2_1"))
@@ -110,7 +107,13 @@ Optionally pass a Define-XML MetaDataVersion to enrich column metadata
     mdv = define_loader.MetaDataVersion()
 
     # Convert with enriched metadata
-    dsjson = dataset_xml_to_json(odm, define_mdv=mdv)
+    datasets = dataset_xml_to_dataset_json(odm, define_mdv=mdv)
+
+.. note::
+
+   The ``odmlib.dataset_json`` module (plain Python classes) is deprecated
+   in v0.2.0 and will be removed in v0.3.0.  See the
+   :doc:`CHANGELOG </changelog>` for migration guidance.
 
 ---
 
@@ -167,15 +170,14 @@ For Dataset-XML 1.0.1 (flat structure):
     df = dataset_to_dataframe(odm.ClinicalData)
     print(df.head())
 
-For Dataset-JSON datasets:
+For Dataset-JSON v1.1 datasets:
 
 .. code-block:: python
 
-    from odmlib.dataset_json import DatasetJSON
+    from odmlib.dataset_json_1_1 import DatasetJSON
     from odmlib.dataframe import dataset_json_to_dataframe
 
-    dsjson = DatasetJSON.read_json("ae_dataset.json")
-    ae = dsjson.get_dataset("AE")
+    ae = DatasetJSON.read_json("ae_dataset.json")
     df = dataset_json_to_dataframe(ae)
     print(df.describe())
 

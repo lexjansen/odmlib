@@ -118,7 +118,7 @@ Notes:
           <def:WhereClauseRef WhereClauseOID="WC.LB.LBTESTCD.VITB9.LBSPEC.BLOOD"/>
         </ItemRef>
       </def:ValueListDef>
-      <def:ValueListDef OID="VL.SUPPDM.QVAL">
+          <def:ValueListDef OID="VL.SUPPDM.QVAL">
         <ItemRef ItemOID="IT.SUPPDM.QVAL.RACE1" OrderNumber="1" Mandatory="No"
          Role="Record Qualifier" MethodOID="MT.RACE">
           <def:WhereClauseRef WhereClauseOID="WC.SUPPDM.QNAM.RACE1"/>

@@ -62,3 +62,11 @@ valueset module
    :members:
    :undoc-members:
    :show-inheritance:
+
+mode module
+-----------
+
+.. automodule:: odmlib.mode
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -103,6 +103,12 @@ instead of failing on the first one:
         for err in errors:
             print(f"Error: {err}")
 
+This pattern is particularly useful after permissive loading, where a
+non-conformant document has been loaded with validation bypassed.  After
+fixing known issues, use ``validate(collect_errors=True)`` to confirm all
+problems have been resolved.  See :doc:`permissive_loading` for the
+complete workflow.
+
 Schema Validation
 -----------------
 

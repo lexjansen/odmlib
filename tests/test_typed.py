@@ -344,3 +344,41 @@ class TestTyped(unittest.TestCase):
         # invalid partial datetime
         with self.assertRaises(ValueError):
             ptime = PartialDateModel(Name="AETERM", TestTime="-:05")
+
+
+class DurationModel(OE.ODMElement):
+    Name = T.String(required=True)
+    Dur = T.DurationDateTimeString(required=False)
+
+
+class TestDurationDateTimeString(unittest.TestCase):
+    def test_duration_valid_basic(self):
+        """P1W, P12W, P99W all accepted"""
+        for val in ("P1W", "P12W", "P99W"):
+            obj = DurationModel(Name="test", Dur=val)
+            self.assertEqual(obj.Dur, val)
+
+    def test_duration_valid_signed(self):
+        """+P1W, -P2W accepted (previously broken by space in regex)"""
+        obj = DurationModel(Name="test", Dur="+P1W")
+        self.assertEqual(obj.Dur, "+P1W")
+        obj = DurationModel(Name="test", Dur="-P2W")
+        self.assertEqual(obj.Dur, "-P2W")
+
+    def test_duration_invalid_spaces(self):
+        """Strings with spaces must be rejected"""
+        with self.assertRaises(ValueError):
+            DurationModel(Name="test", Dur="+ P1W")
+        with self.assertRaises(ValueError):
+            DurationModel(Name="test", Dur=" -P1W")
+
+    def test_duration_invalid_format(self):
+        """Various invalid formats rejected"""
+        for val in ("1W", "PW", "P1D", "not-a-duration", ""):
+            with self.assertRaises(ValueError, msg=f"Should reject: {val!r}"):
+                DurationModel(Name="test", Dur=val)
+
+    def test_duration_none_accepted(self):
+        """None passthrough for optional attribute"""
+        obj = DurationModel(Name="test", Dur=None)
+        self.assertIsNone(obj.Dur)

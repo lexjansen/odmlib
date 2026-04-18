@@ -11,6 +11,7 @@ Dataset-XML, and CT-XML.
 
    guides/getting_started
    guides/reading_documents
+   guides/permissive_loading
    guides/creating_documents
    guides/validation
    guides/model_reference

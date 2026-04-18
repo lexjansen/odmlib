@@ -167,3 +167,25 @@ After loading, convert the odmlib object back to other formats:
 
     # Write to JSON file
     odm.write_json("output.json")
+
+Loading Non-Conformant Documents
+---------------------------------
+
+If a document contains invalid or incomplete content, odmlib normally
+rejects it at load time.  Use permissive mode to load it anyway for
+inspection and repair:
+
+.. code-block:: python
+
+    from odmlib import permissive
+
+    with permissive():
+        loader.open_odm_document("broken.xml")
+        odm = loader.root()
+
+    # Fix issues in strict mode, then validate
+    errors = odm.validate(collect_errors=True)
+
+See :doc:`permissive_loading` for the full guide including graduated
+control, the ``ValidationMode`` flags, and the load-fix-validate
+workflow.

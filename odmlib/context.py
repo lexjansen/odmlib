@@ -27,7 +27,8 @@ Example — read a Define-XML 2.1 file::
         print(len(mdv.ItemDef))
 """
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any, Optional, Union
+import odmlib.mode as _mode
 
 
 class ODMContext:
@@ -50,11 +51,14 @@ class ODMContext:
     def __init__(self, input_file: str,
                  output_file: Optional[str] = None,
                  model_package: str = "odm_1_3_2",
-                 format: Optional[str] = None) -> None:
+                 format: Optional[str] = None,
+                 permissive: Union[bool, _mode.ValidationMode] = False) -> None:
         self.input_file = input_file
         self.output_file = output_file or input_file
         self.model_package = model_package
         self.format = format or self._detect_format(input_file)
+        self._permissive = permissive
+        self._mode_token: Any = None
         self._odm: Any = None
 
     # ------------------------------------------------------------------
@@ -90,10 +94,21 @@ class ODMContext:
     # ------------------------------------------------------------------
 
     def __enter__(self) -> Any:
+        if self._permissive:
+            effective_mode = (
+                self._permissive
+                if isinstance(self._permissive, _mode.ValidationMode)
+                else _mode.ValidationMode.PERMISSIVE
+            )
+            self._mode_token = _mode.set_mode(effective_mode)
         self._odm = self._load()
         return self._odm
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+        # Always restore mode first, before any save logic
+        if self._mode_token is not None:
+            _mode._validation_mode.reset(self._mode_token)
+            self._mode_token = None
         if exc_type is None and self._odm is not None:
             self._save(self._odm)
         return False  # never suppress exceptions
@@ -116,8 +131,10 @@ class DefineContext(ODMContext):
     def __init__(self, input_file: str,
                  output_file: Optional[str] = None,
                  model_package: str = "define_2_1",
-                 format: Optional[str] = None) -> None:
-        super().__init__(input_file, output_file, model_package, format)
+                 format: Optional[str] = None,
+                 permissive: Union[bool, _mode.ValidationMode] = False) -> None:
+        super().__init__(input_file, output_file, model_package, format,
+                         permissive=permissive)
 
     def _load(self) -> Any:
         import odmlib.define_loader as DL
@@ -139,38 +156,54 @@ class DefineContext(ODMContext):
 def open_odm(input_file: str,
              output_file: Optional[str] = None,
              model_package: str = "odm_1_3_2",
-             format: Optional[str] = None) -> ODMContext:
+             format: Optional[str] = None,
+             permissive: Union[bool, _mode.ValidationMode] = False) -> ODMContext:
     """Open an ODM document as a context manager.
 
     :param input_file: Path to the ODM file.
     :param output_file: Write path on exit (defaults to ``input_file``).
     :param model_package: odmlib model package (default ``"odm_1_3_2"``).
     :param format: ``"xml"`` or ``"json"`` (auto-detected if omitted).
+    :param permissive: If ``True``, load in fully permissive mode.
+        Pass a :class:`~odmlib.mode.ValidationMode` flag combination for
+        targeted relaxation.  Defaults to ``False`` (strict).
     :returns: An :class:`ODMContext` instance.
 
     Example::
 
         with open_odm("study.xml") as odm:
             print(odm.FileOID)
+
+        with open_odm("broken.xml", permissive=True) as odm:
+            ...  # permissive mode active during load
     """
-    return ODMContext(input_file, output_file, model_package, format)
+    return ODMContext(input_file, output_file, model_package, format,
+                     permissive=permissive)
 
 
 def open_define(input_file: str,
                 output_file: Optional[str] = None,
                 model_package: str = "define_2_1",
-                format: Optional[str] = None) -> DefineContext:
+                format: Optional[str] = None,
+                permissive: Union[bool, _mode.ValidationMode] = False) -> DefineContext:
     """Open a Define-XML document as a context manager.
 
     :param input_file: Path to the Define-XML file.
     :param output_file: Write path on exit (defaults to ``input_file``).
     :param model_package: odmlib model package (default ``"define_2_1"``).
     :param format: ``"xml"`` or ``"json"`` (auto-detected if omitted).
+    :param permissive: If ``True``, load in fully permissive mode.
+        Pass a :class:`~odmlib.mode.ValidationMode` flag combination for
+        targeted relaxation.  Defaults to ``False`` (strict).
     :returns: A :class:`DefineContext` instance.
 
     Example::
 
         with open_define("define.xml") as define:
             mdv = define.Study[0].MetaDataVersion[0]
+
+        with open_define("broken.xml", permissive=True) as define:
+            ...  # permissive mode active during load
     """
-    return DefineContext(input_file, output_file, model_package, format)
+    return DefineContext(input_file, output_file, model_package, format,
+                        permissive=permissive)

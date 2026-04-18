@@ -83,6 +83,23 @@ odm = ODM.ODM(
 odm.write_xml("study.xml")
 ```
 
+### Load a non-conformant file
+
+```python
+from odmlib import permissive
+import odmlib.loader as LD
+import odmlib.odm_loader as OL
+
+loader = LD.ODMLoader(OL.XMLODMLoader())
+
+with permissive():
+    loader.open_odm_document("broken_define.xml")
+    odm = loader.root()
+
+# Fix issues, then validate
+errors = odm.validate(collect_errors=True)
+```
+
 ## Installation
 
 ```bash
@@ -108,6 +125,8 @@ pip install -e ".[dev]"
 - **Builder API** — fluent `ODMBuilder` for programmatic document construction
 - **Context managers** — `open_odm()` and `open_define()` for safe file handling
 - **Dataset-JSON v1.1** — create, read, write, and convert CDISC Dataset-JSON documents
+- **Define-XML roundtrip** — flatten Define-XML to tabular Dataset-JSON and rebuild via `DefineFlattener`/`DefineBuilder`
+- **Permissive loading** — load non-conformant files for inspection and repair with graduated validation control
 - **Pandas integration** — export metadata/data to DataFrames; import DataFrame rows as ODM objects (optional, `pip install odmlib[dataframe]`)
 
 ## Running Tests

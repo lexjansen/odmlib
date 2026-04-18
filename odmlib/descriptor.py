@@ -7,6 +7,7 @@ attribute types inherit from this class.
 from __future__ import annotations
 from typing import Any, Optional
 from odmlib.exceptions import OdmlibRequiredAttributeError
+import odmlib.mode as _mode
 
 
 class Descriptor:
@@ -58,26 +59,32 @@ class Descriptor:
         """
         if instance is None:
             return self
-        elif (self.name not in instance.__dict__) and (self.name != self.__dict__["name"]):
-            raise OdmlibRequiredAttributeError(
-                f"Missing attribute or element {self.name} in {cls.__name__}",
-                attribute=self.name,
-                element_type=cls.__name__,
-                hint=f"Attribute '{self.name}' is required when constructing {cls.__name__}",
-            )
-        else:
-            if self.name not in instance.__dict__:
-                if isinstance(self, list):
-                    self.__set__(instance, [])
-                else:
-                    if self.element_class is None:
-                        instance.__dict__[self.name] = self.element_class
-                    else:
-                        try:
-                            instance.__dict__[self.name] = self.element_class()
-                        except ValueError:
-                            instance.__dict__[self.name] = None
+        if self.name in instance.__dict__:
             return instance.__dict__[self.name]
+        # Attribute not set on instance — raise only for plain required attributes
+        # (not ODMObject/ODMListObject, which have element_class set and auto-initialize)
+        if self.required and self.element_class is None:
+            if not _mode.is_permissive(_mode.ValidationMode.SKIP_REQUIRED):
+                raise OdmlibRequiredAttributeError(
+                    f"Missing attribute or element {self.name} in {cls.__name__}",
+                    attribute=self.name,
+                    element_type=cls.__name__,
+                    hint=f"Attribute '{self.name}' is required when constructing {cls.__name__}",
+                )
+            else:
+                return None
+        # Auto-initialize optional attributes
+        if isinstance(self, list):
+            self.__set__(instance, [])
+        else:
+            if self.element_class is None:
+                instance.__dict__[self.name] = self.element_class
+            else:
+                try:
+                    instance.__dict__[self.name] = self.element_class()
+                except ValueError:
+                    instance.__dict__[self.name] = None
+        return instance.__dict__[self.name]
 
     def __set__(self, instance: Any, value: Any) -> None:
         """Store ``value`` in the instance's ``__dict__`` under this descriptor's name.

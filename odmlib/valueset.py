@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 from odmlib.exceptions import OdmlibValidationError
 
@@ -60,12 +61,30 @@ class ValueSetLoader:
 
 
 class ValueSet:
-    """Backward-compatible interface to valueset data"""
+    """Backward-compatible interface to valueset data.
+
+    Supports two entry types in valuesets.json:
+    - **list**: A list of allowed string values (e.g., ``["Yes", "No"]``)
+    - **regex dict**: A dict with ``_regex`` key and optional ``_description``
+      (e.g., ``{"_regex": "^2\\\\.[01](\\\\.\\\\d+)?$", "_description": "..."}``).
+    """
+
+    _compiled_regex_cache = {}  # (version, attribute) -> compiled re.Pattern
+
+    @classmethod
+    def _resolve_version(cls, version, instance):
+        """Resolve the version string from explicit value or instance."""
+        if version is None and instance is not None:
+            module_path = type(instance).__module__
+            return ValueSetLoader.get_version_for_module(module_path)
+        elif version is None:
+            return 'odm_1_3_2'
+        return version
 
     @classmethod
     def value_set(cls, attribute, version=None, instance=None):
         """
-        Get valid values for an attribute
+        Get the raw valueset entry for an attribute.
 
         Args:
             attribute: "ClassName.AttributeName" format
@@ -73,18 +92,13 @@ class ValueSet:
             instance: ODMElement instance for automatic version detection - optional
 
         Returns:
-            List of valid values
+            list or dict: A list of valid values, or a dict with ``_regex`` key
+            for pattern-based validation.
 
         Raises:
-            ValueError: If attribute not found in valueset
+            OdmlibValidationError: If attribute or version not found in valueset
         """
-        # Determine version
-        if version is None and instance is not None:
-            module_path = type(instance).__module__
-            version = ValueSetLoader.get_version_for_module(module_path)
-        elif version is None:
-            # Backward compatibility: default to odm_1_3_2
-            version = 'odm_1_3_2'
+        version = cls._resolve_version(version, instance)
 
         # Load valuesets (cached)
         valuesets = ValueSetLoader.load_valuesets()
@@ -106,3 +120,59 @@ class ValueSet:
                 f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.",
                 hint=f"Attribute '{attribute}' is not defined in the value set for {version}",
             )
+
+    @classmethod
+    def validate(cls, attribute, value, version=None, instance=None):
+        """
+        Check whether a value is valid for the given attribute.
+
+        Args:
+            attribute: "ClassName.AttributeName" format
+            value: The string value to validate
+            version: Explicit version (e.g., "odm_2_0") - optional
+            instance: ODMElement instance for automatic version detection - optional
+
+        Returns:
+            bool: True if the value is valid, False otherwise.
+        """
+        version = cls._resolve_version(version, instance)
+        entry = cls.value_set(attribute, version=version)
+
+        if isinstance(entry, list):
+            return value in entry
+
+        # Regex dict entry
+        if isinstance(entry, dict) and "_regex" in entry:
+            cache_key = (version, attribute)
+            if cache_key not in cls._compiled_regex_cache:
+                cls._compiled_regex_cache[cache_key] = re.compile(entry["_regex"])
+            pattern = cls._compiled_regex_cache[cache_key]
+            return pattern.fullmatch(value) is not None
+
+        return False
+
+    @classmethod
+    def describe(cls, attribute, version=None, instance=None):
+        """
+        Return a human-readable description of valid values for an attribute.
+
+        Args:
+            attribute: "ClassName.AttributeName" format
+            version: Explicit version (e.g., "odm_2_0") - optional
+            instance: ODMElement instance for automatic version detection - optional
+
+        Returns:
+            str: Description suitable for error messages.
+        """
+        version = cls._resolve_version(version, instance)
+        entry = cls.value_set(attribute, version=version)
+
+        if isinstance(entry, list):
+            return f"Value must be one of: {', '.join(entry)}"
+
+        if isinstance(entry, dict) and "_regex" in entry:
+            if "_description" in entry:
+                return entry["_description"]
+            return f"Value must match pattern: {entry['_regex']}"
+
+        return "Unknown valueset format"

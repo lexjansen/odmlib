@@ -28,6 +28,7 @@ from odmlib.exceptions import (
     OdmlibWarning,
     ErrorCollector,
 )
+import odmlib.mode as _mode
 
 
 class ODMMeta(type):
@@ -118,7 +119,7 @@ class ODMWriter:
         # workaround for elementtree NS bug - NamespaceRegistry assumes at least 1 default NS has been set
         nsr = NS.NamespaceRegistry()
         nsr.set_odm_namespace_attributes(root)
-        tree.write(odm_file, xml_declaration=True, encoding='utf-8', method='xml', short_empty_elements=True)
+        tree.write(odm_file, xml_declaration=True, encoding='UTF-8', method='xml', short_empty_elements=True)
 
 
 class ODMElement(metaclass=ODMMeta):
@@ -169,22 +170,25 @@ class ODMElement(metaclass=ODMMeta):
                 if "}" in name:
                     name = name[name.find('}') + 1:]
                 else:
-                    raise OdmlibTypeError(
-                        f"Unknown keyword argument {name} in {self.__class__.__name__}",
-                        attribute=name,
-                        element_type=self.__class__.__name__,
-                        hint=f"Valid attributes for {self.__class__.__name__}: "
-                             f"{', '.join(k for k in self.__class__.__dict__ if not k.startswith('_'))}",
-                    )
+                    if not _mode.is_permissive(_mode.ValidationMode.SKIP_TYPE):
+                        raise OdmlibTypeError(
+                            f"Unknown keyword argument {name} in {self.__class__.__name__}",
+                            attribute=name,
+                            element_type=self.__class__.__name__,
+                            hint=f"Valid attributes for {self.__class__.__name__}: "
+                                 f"{', '.join(k for k in self.__class__.__dict__ if not k.startswith('_'))}",
+                        )
+                    continue
             setattr(self, name, val)
-        for attr, obj in self.__class__.__dict__.items():
-            if isinstance(obj, DESC.Descriptor) and (not isinstance(obj, T.ODMObject)) and (attr not in self.__dict__) and obj.required:
-                raise OdmlibRequiredAttributeError(
-                    f"Missing required keyword argument {attr} in {self.__class__.__name__}",
-                    attribute=attr,
-                    element_type=self.__class__.__name__,
-                    hint=f"Attribute '{attr}' is required when constructing {self.__class__.__name__}",
-                )
+        if not _mode.is_permissive(_mode.ValidationMode.SKIP_REQUIRED):
+            for attr, obj in self.__class__.__dict__.items():
+                if isinstance(obj, DESC.Descriptor) and (not isinstance(obj, T.ODMObject)) and (attr not in self.__dict__) and obj.required:
+                    raise OdmlibRequiredAttributeError(
+                        f"Missing required keyword argument {attr} in {self.__class__.__name__}",
+                        attribute=attr,
+                        element_type=self.__class__.__name__,
+                        hint=f"Attribute '{attr}' is required when constructing {self.__class__.__name__}",
+                    )
 
     def __setattr__(self, key, value):
         """Set an attribute, validating it belongs to this class.
@@ -200,12 +204,16 @@ class ODMElement(metaclass=ODMMeta):
             OdmlibTypeError: If ``key`` is not a declared attribute on this class.
         """
         """ ensure the object being added is a type that belongs to the class """
-        if not hasattr(self, key):
-            raise OdmlibTypeError(
-                f"Assignment error: {self.__class__.__name__} does not have a defined attribute {key}",
-                attribute=key,
-                element_type=self.__class__.__name__,
-            )
+        if not any(key in cls.__dict__ for cls in type(self).__mro__):
+            if not _mode.is_permissive(_mode.ValidationMode.SKIP_TYPE):
+                raise OdmlibTypeError(
+                    f"Assignment error: {self.__class__.__name__} does not have a defined attribute {key}",
+                    attribute=key,
+                    element_type=self.__class__.__name__,
+                )
+            else:
+                self.__dict__[key] = value
+                return
         super().__setattr__(key, value)
 
     def to_json(self) -> str:
@@ -259,7 +267,7 @@ class ODMElement(metaclass=ODMMeta):
             str: UTF-8 XML representation of this element.
         """
         elem = self.to_xml()
-        xml_str = ET.tostring(elem, encoding='utf8', method='xml')
+        xml_str = ET.tostring(elem, encoding='UTF-8', method='xml')
         return xml_str.decode("utf-8")
 
     def to_dict(self) -> dict:

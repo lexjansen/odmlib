@@ -8,6 +8,7 @@ between Dataset-XML 1.0.1 and Dataset-JSON v1.1.
 """
 from odmlib.dataset_json_1_1.model import DatasetJSON, Column, SourceSystem
 from odmlib.dataset_json_1_1.define_flattener import DefineFlattener
+from odmlib.dataset_json_1_1.define_builder import DefineBuilder
 from odmlib.dataset_json_1_1.converter import (
     dataset_xml_to_dataset_json,
     dataset_json_to_dataset_xml,
@@ -15,6 +16,6 @@ from odmlib.dataset_json_1_1.converter import (
 
 __all__ = [
     "DatasetJSON", "Column", "SourceSystem",
-    "DefineFlattener",
+    "DefineFlattener", "DefineBuilder",
     "dataset_xml_to_dataset_json", "dataset_json_to_dataset_xml",
 ]

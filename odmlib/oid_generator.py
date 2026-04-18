@@ -66,6 +66,11 @@ _REF_DEF_OVERRIDES: dict[str, str] = {
     "WorkflowOID": "WorkflowDef",
     "StudyEventGroupOID": "StudyEventGroupDef",
     "TransitionOID": "Transition",
+
+    # RoleCodeListOID (found in ItemRef) references a CodeList but the
+    # naming convention doesn't resolve (RoleCodeListDef / RoleCodeList
+    # don't exist as model classes).
+    "RoleCodeListOID": "CodeList",
 }
 
 

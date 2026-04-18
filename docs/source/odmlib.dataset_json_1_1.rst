@@ -31,3 +31,11 @@ odmlib.dataset\_json\_1\_1.converter
    :members:
    :undoc-members:
    :show-inheritance:
+
+odmlib.dataset\_json\_1\_1.define\_builder
+--------------------------------------------
+
+.. automodule:: odmlib.dataset_json_1_1.define_builder
+   :members:
+   :undoc-members:
+   :show-inheritance:

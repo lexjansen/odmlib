@@ -22,6 +22,7 @@ from odmlib.exceptions import (
     OdmlibInteroperabilityWarning,
     ErrorCollector,
 )
+from odmlib.mode import ValidationMode, permissive, get_mode, set_mode
 from odmlib.context import open_odm, open_define
 from odmlib.builder import ODMBuilder
 from odmlib.oid_generator import DynamicOIDRef, create_oid_checker

@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Permissive Loading Mode
+- New `odmlib/mode.py` module with `ValidationMode` flag enum and
+  `permissive()` context manager for loading non-conformant ODM documents
+- `ValidationMode.STRICT` (default) — all validation enforced (existing
+  behavior, unchanged)
+- `ValidationMode.SKIP_REQUIRED` — omit required-attribute checks during
+  construction and access
+- `ValidationMode.SKIP_TYPE` — omit type checks (Typed, Integer, Float,
+  ODMObject, ODMListObject, Positive, NonNegative, and unknown-attribute
+  rejection)
+- `ValidationMode.SKIP_FORMAT` — omit format validators (datetime, SAS
+  name/format, email, URL, filename, regex, sized string)
+- `ValidationMode.SKIP_VALUESET` — omit ValidValues and
+  ExtendedValidValues enforcement
+- `ValidationMode.PERMISSIVE` — composite flag that skips all validation
+  categories
+- `permissive()` context manager with automatic cleanup via
+  `contextvars.ContextVar`; supports graduated control via flag
+  combinations
+- `open_odm()` and `open_define()` context managers accept
+  `permissive=True` or a specific `ValidationMode` combination
+- `ValidationMode`, `permissive`, `get_mode`, `set_mode` exported from
+  `odmlib` package root
+- New how-to guide: `docs/source/guides/permissive_loading.rst`
+- `tests/test_permissive_mode.py` — 70 tests covering all validation
+  categories, context manager safety, integration with loaders, and the
+  load-fix-validate workflow
+
 #### Error Reporting and Diagnostics (Phase 1)
 - New `odmlib/exceptions.py` module with a structured exception hierarchy
 - `OdmlibError` — base class for all odmlib exceptions
@@ -120,6 +148,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Permissive Loading Mode
+- `odmlib/descriptor.py`: `Descriptor.__get__` returns `None` for unset
+  required attributes when `SKIP_REQUIRED` mode is active (previously
+  always raised `OdmlibRequiredAttributeError`)
+- `odmlib/odm_element.py`: `ODMElement.__init__` and `__setattr__`
+  bypass unknown-attribute rejection and required-attribute enforcement
+  when appropriate mode flags are active
+- `odmlib/typed.py`: all 25 `__set__` methods check the current
+  `ValidationMode` before raising validation exceptions
+- `odmlib/context.py`: `open_odm()` and `open_define()` accept a new
+  `permissive` parameter; `ODMContext` and `DefineContext` manage mode
+  lifecycle in `__enter__`/`__exit__`
+
 #### Phase 1
 - All ~70 `ValueError`/`TypeError` raises across 16 files replaced with structured odmlib exceptions
 - `odmlib/odm_element.py`: `verify_order()` now raises `OdmlibElementOrderError` with a hint to use
@@ -141,6 +182,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instantiation; they remain functional and will be removed in v0.3.0
 - `tests/test_oid_generator.py` — 57 new tests covering model introspection, mapping
   correctness, DynamicOIDRef behavior, end-to-end validation, and deprecation warnings
+
+#### ARM 1.0 Model Support
+- New `odmlib/arm_1_0/` package — CDISC Analysis Results Metadata (ARM) v1.0 model using
+  the ODMElement/descriptor pattern
+  - Supports ARM elements: `AnalysisResultDisplays`, `ResultDisplay`, `AnalysisResult`,
+    `AnalysisDatasets`, `AnalysisDataset`, `AnalysisVariable`, `ProgrammingCode`, `Code`,
+    `Documentation`, `AnalysisDocumentation`, and supporting elements
+  - Integrates with Define-XML 2.1 for analysis results metadata
+  - ARM namespace (`arm`) registered automatically on import
+
+#### Valueset Regex Validation
+- `odmlib/valueset.py`: `ValueSet.validate(value)` — validates a value against the
+  valueset's allowed values, including regex pattern matching for string-type entries
+- `odmlib/valueset.py`: `ValueSet.describe()` — returns a human-readable description
+  of the valid values for error messages
+- `odmlib/data/valuesets.json`: `MetaDataVersion.DefineVersion` converted from enumerated
+  list to regex pattern `^2\.[01](\.\d+)?$` for flexible version matching
+- `tests/test_valueset.py` — 30 tests for regex validation and describe functionality
+
+#### Element Search Methods (Phase 3)
+- `ODMElement.find_all(element_type, attribute, value)` — find all matching child elements
+  in a list attribute
+- `ODMElement.find_by(**kwargs)` — find a child element matching multiple attribute criteria
+
+#### ODMBuilder Fluent API (Phase 3)
+- New `odmlib/builder.py` — `ODMBuilder` class providing a fluent/chained API for building
+  ODM documents programmatically with `add_study()`, `add_metadata_version()`,
+  `add_item_group_def()`, `add_item_def()`, `add_code_list()`, and `build()` methods
 
 #### Phase 4
 - Unified version to `0.2.0` across `pyproject.toml`, `odmlib/__init__.py`, and `docs/source/conf.py`

@@ -749,5 +749,111 @@ class TestTrailingSpaceBugFixed(unittest.TestCase):
                              f"Trailing space found in KeySet def_ref: '{ref}'")
 
 
+class TestRoleCodeListOIDResolution(unittest.TestCase):
+    """Verify RoleCodeListOID resolves to CodeList (Step 3a fix)."""
+
+    def _get_mapping(self, model_pkg):
+        from odmlib.oid_generator import (
+            discover_model_classes, discover_oid_definitions,
+            discover_oid_references, build_ref_def_mapping,
+        )
+        module = __import__(f"odmlib.{model_pkg}.model", fromlist=["model"])
+        classes = discover_model_classes(module)
+        defs = discover_oid_definitions(classes)
+        refs = discover_oid_references(classes)
+        return build_ref_def_mapping(refs, defs, classes)
+
+    def test_role_codelist_oid_in_odm_132(self):
+        ref_def = self._get_mapping("odm_1_3_2")
+        self.assertIn("RoleCodeListOID", ref_def)
+        self.assertEqual(ref_def["RoleCodeListOID"], "CodeList")
+
+    def test_role_codelist_oid_in_define_21(self):
+        ref_def = self._get_mapping("define_2_1")
+        self.assertIn("RoleCodeListOID", ref_def)
+        self.assertEqual(ref_def["RoleCodeListOID"], "CodeList")
+
+
+class TestSignatureOIDManualMapping(unittest.TestCase):
+    """Verify SignatureOID maps to Signature (not SignatureRef) in manual oid_ref (Step 3b fix)."""
+
+    def setUp(self):
+        _make_odm_132_namespace()
+
+    def test_signature_oid_maps_to_signature(self):
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import odmlib.odm_1_3_2.rules.oid_ref as OID_REF
+            checker = OID_REF.OIDRef()
+        self.assertEqual(checker.ref_def["SignatureOID"], "Signature")
+
+
+class TestAddOidRefUnknownAttr(unittest.TestCase):
+    """Test that add_oid_ref silently ignores unknown attribute names (Issue 2.4)."""
+
+    def setUp(self):
+        _make_odm_132_namespace()
+        from odmlib.oid_generator import create_oid_checker
+        self.checker = create_oid_checker("odm_1_3_2")
+
+    def test_unknown_attr_no_error(self):
+        """Calling add_oid_ref with an attr not in oid_ref should not raise."""
+        initial_state = {k: set(v) for k, v in self.checker.oid_ref.items()}
+        self.checker.add_oid_ref("SOME.OID", "CompletelyFakeOID")
+        # No error raised, and oid_ref state is unchanged
+        for attr, refs in self.checker.oid_ref.items():
+            self.assertEqual(refs, initial_state[attr],
+                             f"oid_ref[{attr!r}] was unexpectedly modified")
+
+    def test_unknown_attr_does_not_create_key(self):
+        """Unknown attr should not be added as a new key in oid_ref."""
+        self.checker.add_oid_ref("SOME.OID", "BogusOID")
+        self.assertNotIn("BogusOID", self.checker.oid_ref)
+
+
+class TestODM20ResolvedAndUnresolvedRefs(unittest.TestCase):
+    """Document which ODM 2.0 reference attributes are resolved vs unresolved (Issue 2.5)."""
+
+    def setUp(self):
+        from odmlib.oid_generator import create_oid_checker
+        self.checker = create_oid_checker("odm_2_0")
+
+    def test_odm2_resolved_standard_refs(self):
+        """Core ref attrs that should always resolve in ODM 2.0."""
+        expected_resolved = [
+            "ItemOID", "ItemGroupOID", "StudyEventOID", "CodeListOID",
+            "MethodOID", "MetaDataVersionOID", "StudyOID",
+        ]
+        for attr in expected_resolved:
+            self.assertIn(attr, self.checker.ref_def,
+                          f"{attr} should be resolved in ODM 2.0")
+
+    def test_odm2_resolved_workflow_refs(self):
+        """ODM 2.0 workflow-specific refs that resolve via overrides."""
+        expected_resolved = [
+            "WorkflowOID", "ArmOID", "EpochOID",
+            "StudyEventGroupOID", "TransitionOID",
+        ]
+        for attr in expected_resolved:
+            self.assertIn(attr, self.checker.ref_def,
+                          f"{attr} should be resolved in ODM 2.0")
+
+    def test_odm2_unresolved_refs(self):
+        """Refs that intentionally do NOT resolve (no matching Def class).
+
+        This test serves as a living specification. If a future model update
+        adds the target class, the test should be updated to move the attr
+        from unresolved to resolved.
+        """
+        expected_unresolved = [
+            "OrganizationOID", "PresentationOID", "UnitsItemOID",
+        ]
+        for attr in expected_unresolved:
+            self.assertNotIn(attr, self.checker.ref_def,
+                             f"{attr} should NOT be resolved in ODM 2.0 "
+                             f"(no target Def class in the model)")
+
+
 if __name__ == "__main__":
     unittest.main()
