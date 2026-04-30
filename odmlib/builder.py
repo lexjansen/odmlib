@@ -1,4 +1,5 @@
-"""Optional builder/fluent API for constructing ODM documents.
+"""
+Optional builder/fluent API for constructing ODM documents.
 
 The builder provides a chainable interface for constructing complex
 documents with less boilerplate. It wraps the standard odmlib model

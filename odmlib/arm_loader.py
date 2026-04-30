@@ -148,6 +148,11 @@ class XMLArmLoader(DL.DocumentLoader):
         if namespace_registry:
             self.nsr = namespace_registry
         else:
+            # ARM 1.0 is paired with ODM 1.3 and Define-XML 2.1; these URIs are
+            # intentionally hardcoded here. If a future ARM version pairs with
+            # different base URIs, this is the spot to derive them from
+            # model_package (see _DEFAULT_DEF_NS_URI in define_loader.py for
+            # the pattern).
             NS.NamespaceRegistry(prefix="odm", uri="http://www.cdisc.org/ns/odm/v1.3", is_default=True)
             NS.NamespaceRegistry(prefix="def", uri="http://www.cdisc.org/ns/def/v2.1")
             self.nsr = NS.NamespaceRegistry(prefix="arm", uri=self.ns_uri)

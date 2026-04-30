@@ -11,7 +11,7 @@ ODM_XML_FILE = "./data/simple_create.xml"
 ODM_JSON_FILE = "./data/simple_create.json"
 
 
-class MyTestCase(unittest.TestCase):
+class TestCreateOdm(unittest.TestCase):
     def setUp(self) -> None:
         current_datetime = datetime.datetime.now(datetime.timezone.utc).isoformat()
         root = ODM.ODM(FileOID="ODM.DEMO.001", Granularity="Metadata", AsOfDateTime=current_datetime,

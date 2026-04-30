@@ -30,6 +30,41 @@ Select the appropriate loader based on your file format and standard:
      - ODM 2.0
      - :class:`~odmlib.odm_loader.XMLODMLoader` (with ``model_package="odm_2_0"``)
 
+Choosing a Namespace URI
+------------------------
+
+The XML loaders accept an optional ``ns_uri`` argument. When omitted, the
+URI is derived from ``model_package``:
+
+.. list-table::
+   :header-rows: 1
+
+   * - ``model_package``
+     - Default ``ns_uri``
+   * - ``odm_1_3_2``
+     - ``http://www.cdisc.org/ns/odm/v1.3``
+   * - ``odm_2_0``
+     - ``http://www.cdisc.org/ns/odm/v2.0``
+   * - ``define_2_0``
+     - ``http://www.cdisc.org/ns/def/v2.0``
+   * - ``define_2_1``
+     - ``http://www.cdisc.org/ns/def/v2.1``
+
+You only need to pass ``ns_uri`` explicitly if your document uses a
+non-standard URI (for example, a custom extension namespace). Passing an
+explicit value overrides the derived default.
+
+.. code-block:: python
+
+    # Just works — ns_uri is derived from model_package
+    loader = LD.ODMLoader(DL.XMLDefineLoader(model_package="define_2_1"))
+
+    # Override only when you need to
+    loader = LD.ODMLoader(DL.XMLDefineLoader(
+        model_package="define_2_1",
+        ns_uri="http://example.com/extensions/v1",
+    ))
+
 Loading an ODM-XML File
 -----------------------
 

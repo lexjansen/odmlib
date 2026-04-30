@@ -16,6 +16,13 @@ class MetadataSchema(ConformanceChecker):
 
     def check_conformance(self, doc, schema_name):
         schema = schema_registry.get(schema_name)
+        if schema is None:
+            raise OdmlibConformanceError(
+                f"No conformance schema registered for '{schema_name}'",
+                element_type=schema_name,
+                hint=f"Register a schema for '{schema_name}' in MetadataSchema._set_metadata_registry(), "
+                     "or call validate() without conformance_checker for this model.",
+            )
         v = validator.Validator(schema)
         is_valid = v.validate(doc)
         if not is_valid:

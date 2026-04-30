@@ -28,6 +28,7 @@ class ValueSetLoader:
             'odmlib.odm_2_0.model': 'odm_2_0',
             'odmlib.define_2_0.model': 'define_2_0',
             'odmlib.define_2_1.model': 'define_2_1',
+            'odmlib.arm_1_0.model': 'define_2_1',      # ARM extends Define-XML 2.1
             'odmlib.ct_1_1_1.model': 'ct_1_1_1',
             'odmlib.dataset_1_0_1.model': 'dataset_1_0_1',
             # Add test models
@@ -48,6 +49,8 @@ class ValueSetLoader:
         if 'odm_2_0' in module_path:
             return 'odm_2_0'
         elif 'define_2_1' in module_path:
+            return 'define_2_1'
+        elif 'arm_1_0' in module_path:
             return 'define_2_1'
         elif 'define_2_0' in module_path:
             return 'define_2_0'

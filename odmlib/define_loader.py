@@ -19,6 +19,11 @@ import importlib
 import xml.etree.ElementTree as ET
 from odmlib.exceptions import OdmlibLoaderStateError
 
+_DEFAULT_DEF_NS_URI = {
+    "define_2_0": "http://www.cdisc.org/ns/def/v2.0",
+    "define_2_1": "http://www.cdisc.org/ns/def/v2.1",
+}
+
 
 class XMLDefineLoader(DL.DocumentLoader):
     """Loads Define-XML documents into the odmlib object model.
@@ -27,14 +32,18 @@ class XMLDefineLoader(DL.DocumentLoader):
     additional elements like ValueListDef, WhereClauseDef, and CommentDef.
 
     Args:
-        model_package (str): Package name (default: "define_2_0").
-            Options: "define_2_0", "define_2_1".
-        ns_uri (str): Define-XML namespace URI
-            (default: "http://www.cdisc.org/ns/def/v2.0").
+        model_package (str): Package name (default: ``"define_2_0"``).
+            Options: ``"define_2_0"``, ``"define_2_1"``.
+        ns_uri (Optional[str]): Define-XML ``def:`` namespace URI. When
+            ``None`` (the default), the URI is derived from
+            ``model_package`` (``define_2_0`` -> ``.../v2.0``,
+            ``define_2_1`` -> ``.../v2.1``). Passing an explicit value
+            overrides the derived default and is preserved as-is, which is
+            useful for custom extensions or non-standard schema variants.
         local_model (bool): If True, ``model_package`` is a full module path.
     """
 
-    def __init__(self, model_package: str = "define_2_0", ns_uri: str = "http://www.cdisc.org/ns/def/v2.0",
+    def __init__(self, model_package: str = "define_2_0", ns_uri: Optional[str] = None,
                  local_model: bool = False) -> None:
         self.filename: Optional[str] = None
         self.parser: Optional[Any] = None
@@ -42,6 +51,8 @@ class XMLDefineLoader(DL.DocumentLoader):
             self.DEF = importlib.import_module(f"{model_package}.model")
         else:
             self.DEF = importlib.import_module(f"odmlib.{model_package}.model")
+        if ns_uri is None:
+            ns_uri = _DEFAULT_DEF_NS_URI.get(model_package, "http://www.cdisc.org/ns/def/v2.0")
         self.ns_uri = ns_uri
         self.nsr = NS.NamespaceRegistry()
 

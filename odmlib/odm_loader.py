@@ -22,6 +22,11 @@ from odmlib.exceptions import OdmlibLoaderStateError
 ODM_PREFIX = "odm:"
 ODM_NS = {'odm': 'http://www.cdisc.org/ns/odm/v1.3'}
 
+_DEFAULT_ODM_NS_URI = {
+    "odm_1_3_2": "http://www.cdisc.org/ns/odm/v1.3",
+    "odm_2_0": "http://www.cdisc.org/ns/odm/v2.0",
+}
+
 
 class JSONODMLoader(DL.DocumentLoader):
     """Loads ODM-JSON documents into the odmlib object model.
@@ -178,14 +183,21 @@ class XMLODMLoader(DL.DocumentLoader):
     classes based on element tag names.
 
     Args:
-        model_package (str): Package name (default: "odm_1_3_2").
-            Options: "odm_1_3_2", "odm_2_0", "dataset_1_0_1", "ct_1_1_1".
-        ns_uri (str): ODM namespace URI (default ODM 1.3.2 URI).
+        model_package (str): Package name (default: ``"odm_1_3_2"``).
+            Options: ``"odm_1_3_2"``, ``"odm_2_0"``, ``"dataset_1_0_1"``,
+            ``"ct_1_1_1"``.
+        ns_uri (Optional[str]): ODM default namespace URI. When ``None``
+            (the default), the URI is derived from ``model_package``
+            (``odm_1_3_2`` -> ``.../v1.3``, ``odm_2_0`` -> ``.../v2.0``;
+            other packages fall back to ``.../v1.3``). Passing an explicit
+            value overrides the derived default and is preserved as-is,
+            which is useful for custom extensions or non-standard schema
+            variants.
         local_model (bool): If True, ``model_package`` is a full module path.
         nsr: Optional pre-configured NamespaceRegistry instance.
     """
 
-    def __init__(self, model_package: str = "odm_1_3_2", ns_uri: str = "http://www.cdisc.org/ns/odm/v1.3",
+    def __init__(self, model_package: str = "odm_1_3_2", ns_uri: Optional[str] = None,
                  local_model: bool = False, nsr: Optional[Any] = None) -> None:
         self.filename: Optional[str] = None
         self.parser: Optional[Any] = None
@@ -194,10 +206,12 @@ class XMLODMLoader(DL.DocumentLoader):
             self.ODM = importlib.import_module(f"{model_package}.model")
         else:
             self.ODM = importlib.import_module(f"odmlib.{model_package}.model")
+        if ns_uri is None:
+            ns_uri = _DEFAULT_ODM_NS_URI.get(model_package, "http://www.cdisc.org/ns/odm/v1.3")
+        self.ns_uri = ns_uri
         if nsr:
             self._set_namespace(nsr)
         else:
-            # self.nsr = NS.NamespaceRegistry()
             self._set_namespace(None)
 
     def load_document(self, elem: ET.Element, *args: Any) -> Any:
@@ -274,13 +288,15 @@ class XMLODMLoader(DL.DocumentLoader):
 
         Args:
             namespace_registry: An existing
-                :class:`~odmlib.ns_registry.NamespaceRegistry` to use,
-                or ``None`` to create a new default ODM 1.3.2 registry.
+                :class:`~odmlib.ns_registry.NamespaceRegistry` to use, or
+                ``None`` to register a new default ODM namespace using
+                ``self.ns_uri`` (which was derived from ``model_package``
+                or set explicitly in the constructor).
         """
         if namespace_registry is not None:
             self.nsr = namespace_registry
         else:
-            self.nsr = NS.NamespaceRegistry(prefix="odm", uri="http://www.cdisc.org/ns/odm/v1.3", is_default=True)
+            self.nsr = NS.NamespaceRegistry(prefix="odm", uri=self.ns_uri, is_default=True)
 
     def load_odm(self) -> Any:
         """Return the root ODM object loaded from the stored document.

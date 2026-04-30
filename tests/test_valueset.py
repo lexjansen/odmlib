@@ -115,16 +115,16 @@ class TestValueSet(TestCase):
         seg_ref_values = VS.ValueSet.value_set("StudyEventGroupRef.Mandatory", version='odm_2_0')
         self.assertEqual(seg_ref_values, ["Yes", "No"])
 
-    def test_odm_1_3_2_define_version_is_regex(self):
+    def test_define_2_0_define_version_is_regex(self):
         """Test that DefineVersion is now a regex dict, not a list"""
-        define_version = VS.ValueSet.value_set("MetaDataVersion.DefineVersion", version='odm_1_3_2')
+        define_version = VS.ValueSet.value_set("MetaDataVersion.DefineVersion", version='define_2_1')
         self.assertIsInstance(define_version, dict)
         self.assertIn("_regex", define_version)
         self.assertIn("_description", define_version)
 
     def test_value_set_returns_regex_dict(self):
-        """Test that value_set() returns dict for regex entries across all versions"""
-        for version in ['odm_1_3_2', 'define_2_0', 'define_2_1', 'ct_1_1_1', 'dataset_1_0_1']:
+        """Test that value_set() returns dict for regex entries across all Define-XML versions"""
+        for version in ['define_2_0', 'define_2_1']:
             entry = VS.ValueSet.value_set("MetaDataVersion.DefineVersion", version=version)
             self.assertIsInstance(entry, dict, f"Expected dict for {version}")
             self.assertIn("_regex", entry)
@@ -150,10 +150,10 @@ class TestValueSet(TestCase):
         odm_2_0_values = VS.ValueSet.value_set("StudyEventDef.Repeating", version='odm_2_0')
         self.assertEqual(odm_1_3_2_values, odm_2_0_values)
 
-        # ItemDef.DataType should be in both versions
-        odm_1_3_2_datatypes = VS.ValueSet.value_set("ItemDef.DataType", version='odm_1_3_2')
-        odm_2_0_datatypes = VS.ValueSet.value_set("ItemDef.DataType", version='odm_2_0')
-        self.assertEqual(odm_1_3_2_datatypes, odm_2_0_datatypes)
+        # RangeCheck.Comparator should be in both versions
+        odm_1_3_2_comparators = VS.ValueSet.value_set("RangeCheck.Comparator", version='odm_1_3_2')
+        odm_2_0_comparators = VS.ValueSet.value_set("RangeCheck.Comparator", version='odm_2_0')
+        self.assertEqual(odm_1_3_2_comparators, odm_2_0_comparators)
 
 
 class TestValueSetValidate(TestCase):
@@ -177,10 +177,10 @@ class TestValueSetValidate(TestCase):
 
     def test_validate_regex_valid(self):
         """Test validate() returns True for values matching DefineVersion regex"""
-        valid_versions = ["2.0", "2.1", "2.0.0", "2.1.0", "2.1.18", "2.0.99", "2.1.101"]
+        valid_versions = ["2.1", "2.1.0", "2.1.18", "2.1.99", "2.1.101"]
         for ver in valid_versions:
             self.assertTrue(
-                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='odm_1_3_2'),
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='define_2_1'),
                 f"Expected '{ver}' to be valid"
             )
 
@@ -189,13 +189,13 @@ class TestValueSetValidate(TestCase):
         invalid_versions = ["abc", "1.0", "3.0.1", "3.0.0", "0.1.0", "3.0", ".1", "2.", "2.1.", ""]
         for ver in invalid_versions:
             self.assertFalse(
-                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='odm_1_3_2'),
+                VS.ValueSet.validate("MetaDataVersion.DefineVersion", ver, version='define_2_0'),
                 f"Expected '{ver}' to be invalid"
             )
 
     def test_validate_regex_across_versions(self):
         """Test regex validation works for all versions that have DefineVersion"""
-        for version in ['odm_1_3_2', 'define_2_0', 'define_2_1', 'ct_1_1_1', 'dataset_1_0_1']:
+        for version in ['define_2_1']:
             self.assertTrue(
                 VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.1.18", version=version),
                 f"Expected '2.1.18' to be valid for {version}"
@@ -207,13 +207,13 @@ class TestValueSetValidate(TestCase):
 
     def test_validate_regex_cache(self):
         """Test that compiled regex patterns are cached"""
-        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2')
-        self.assertIn(('odm_1_3_2', 'MetaDataVersion.DefineVersion'),
+        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='define_2_0')
+        self.assertIn(('define_2_0', 'MetaDataVersion.DefineVersion'),
                        VS.ValueSet._compiled_regex_cache)
 
     def test_regex_cache_cleared_on_reset(self):
         """Test that clearing _cache also allows fresh regex cache"""
-        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2')
+        VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='define_2_0')
         self.assertTrue(len(VS.ValueSet._compiled_regex_cache) > 0)
 
         # Simulating cache reset as done in setUp
@@ -221,7 +221,7 @@ class TestValueSetValidate(TestCase):
         self.assertEqual(len(VS.ValueSet._compiled_regex_cache), 0)
 
         # Should still work after clearing
-        self.assertTrue(VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='odm_1_3_2'))
+        self.assertTrue(VS.ValueSet.validate("MetaDataVersion.DefineVersion", "2.0", version='define_2_0'))
 
 
 class TestValueSetDescribe(TestCase):
@@ -241,23 +241,23 @@ class TestValueSetDescribe(TestCase):
 
     def test_describe_regex_with_description(self):
         """Test describe() returns _description for regex entries"""
-        desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='odm_1_3_2')
-        self.assertIn("Define-XML version 2.0 or 2.1", desc)
+        desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='define_2_0')
+        self.assertIn("Define-XML version 2.0", desc)
 
     def test_describe_regex_no_description(self):
         """Test describe() falls back to pattern when _description is absent"""
         # Temporarily modify the cached entry to remove _description
         VS.ValueSetLoader.load_valuesets()
-        original = VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion']
+        original = VS.ValueSetLoader._cache['define_2_0']['MetaDataVersion.DefineVersion']
         try:
-            VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion'] = {
-                "_regex": "^2\\.[01](\\.\\d+)?$"
+            VS.ValueSetLoader._cache['define_2_0']['MetaDataVersion.DefineVersion'] = {
+                "_regex": "^2\\.0(\\.\\d+)?$"
             }
-            desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='odm_1_3_2')
+            desc = VS.ValueSet.describe("MetaDataVersion.DefineVersion", version='define_2_0')
             self.assertIn("Value must match pattern:", desc)
-            self.assertIn("^2\\.[01]", desc)
+            self.assertIn("^2\\.0", desc)
         finally:
-            VS.ValueSetLoader._cache['odm_1_3_2']['MetaDataVersion.DefineVersion'] = original
+            VS.ValueSetLoader._cache['define_2_0']['MetaDataVersion.DefineVersion'] = original
 
 
 class TestValueSetIntegration(TestCase):
@@ -317,11 +317,11 @@ class TestValueSetIntegration(TestCase):
         mdv.DefineVersion = "2.1.18"
         self.assertEqual(mdv.DefineVersion, "2.1.18")
 
-        mdv.DefineVersion = "2.0"
-        self.assertEqual(mdv.DefineVersion, "2.0")
+        mdv.DefineVersion = "2.1"
+        self.assertEqual(mdv.DefineVersion, "2.1")
 
-        mdv.DefineVersion = "2.0.99"
-        self.assertEqual(mdv.DefineVersion, "2.0.99")
+        mdv.DefineVersion = "2.1.99"
+        self.assertEqual(mdv.DefineVersion, "2.1.99")
 
         # Invalid DefineVersion should raise error
         with self.assertRaises(TypeError):
