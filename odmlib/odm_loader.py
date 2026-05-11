@@ -201,7 +201,6 @@ class XMLODMLoader(DL.DocumentLoader):
                  local_model: bool = False, nsr: Optional[Any] = None) -> None:
         self.filename: Optional[str] = None
         self.parser: Optional[Any] = None
-        self.nsr: Optional[Any] = None
         if local_model:
             self.ODM = importlib.import_module(f"{model_package}.model")
         else:
@@ -209,10 +208,16 @@ class XMLODMLoader(DL.DocumentLoader):
         if ns_uri is None:
             ns_uri = _DEFAULT_ODM_NS_URI.get(model_package, "http://www.cdisc.org/ns/odm/v1.3")
         self.ns_uri = ns_uri
-        if nsr:
+        if nsr is not None:
             self._set_namespace(nsr)
         else:
-            self._set_namespace(None)
+            # Mirror XMLDefineLoader.__init__: empty Borg view, no global
+            # mutation at construction time. Registration is deferred to
+            # create_document / create_document_from_string so that callers
+            # who pre-registered prefixes (e.g. "mdr") don't have their
+            # global "odm" mapping silently overwritten when ns_uri is a
+            # non-canonical wrapper URI.
+            self.nsr = NS.NamespaceRegistry()
 
     def load_document(self, elem: ET.Element, *args: Any) -> Any:
         """Recursively load an XML element into an odmlib object tree.
@@ -261,8 +266,9 @@ class XMLODMLoader(DL.DocumentLoader):
             ET.Element: The root XML element of the parsed document.
         """
         self.filename = filename
-        if namespace_registry is not None:
-            self._set_namespace(namespace_registry)
+        # Unconditional, mirroring XMLDefineLoader.create_document. Required
+        # because __init__ no longer populates self.nsr with the odm prefix.
+        self._set_namespace(namespace_registry)
         self.parser = P.ODMParser(self.filename, self.nsr)
         root = self.parser.parse()
         return root

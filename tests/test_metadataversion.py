@@ -109,12 +109,12 @@ class TestMetaDataVersion(TestCase):
         self.mdv.ItemGroupDef = self.add_IGD()
         self.mdv.ItemDef = self.add_ITD()
         self.mdv.CodeList = self.add_CL()
-        self.mdv.MethodDef = self.add_MD()
         self.mdv.ConditionDef = self.add_CD()
+        self.mdv.MethodDef = self.add_MD()
         mdv_xml = self.mdv.to_xml()
         self.assertEqual("MDV.TRACE-XML-ODM-01", mdv_xml.attrib["OID"])
         children = ['Protocol', 'StudyEventDef', 'StudyEventDef', 'FormDef', 'FormDef', 'ItemGroupDef', 'ItemGroupDef',
-                    'ItemDef', 'ItemDef', 'CodeList', 'MethodDef', 'ConditionDef']
+                    'ItemDef', 'ItemDef', 'CodeList', 'ConditionDef', 'MethodDef']
         found_list = [e.tag for e in mdv_xml]
         print(found_list)
         self.assertListEqual(children, [e.tag for e in mdv_xml])

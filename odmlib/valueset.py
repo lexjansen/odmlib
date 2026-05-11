@@ -35,31 +35,50 @@ class ValueSetLoader:
             'tests.model_extended': 'odm_1_3_2',  # Test extension uses base
         }
 
+    # Pattern markers checked against unknown module paths, in priority order.
+    # Order matters: 'odm_2_0' must be tried before 'odm_1_3_2' substrings, etc.
+    _MODULE_PATTERNS = (
+        ('odm_2_0', 'odm_2_0'),
+        ('define_2_1', 'define_2_1'),
+        ('arm_1_0', 'define_2_1'),
+        ('define_2_0', 'define_2_0'),
+        ('ct_1_1_1', 'ct_1_1_1'),
+        ('dataset_1_0_1', 'dataset_1_0_1'),
+    )
+
     @classmethod
-    def get_version_for_module(cls, module_path):
-        """Determine version from module path"""
+    def get_version_for_module(cls, module_path, instance_class=None):
+        """Determine the valueset version for a module path.
+
+        Resolution order:
+        1. Exact match in the version map.
+        2. Substring marker match against the module path.
+        3. If ``instance_class`` is provided, walk its MRO and recurse on each
+           base class's module — this lets local models that subclass a shipped
+           odmlib model inherit the correct version.
+        4. Fallback: ``odm_1_3_2`` for backward compatibility.
+        """
         if cls._version_map is None:
             cls.load_valuesets()
 
-        # Exact match
         if module_path in cls._version_map:
             return cls._version_map[module_path]
 
-        # Pattern matching for custom/local models
-        if 'odm_2_0' in module_path:
-            return 'odm_2_0'
-        elif 'define_2_1' in module_path:
-            return 'define_2_1'
-        elif 'arm_1_0' in module_path:
-            return 'define_2_1'
-        elif 'define_2_0' in module_path:
-            return 'define_2_0'
-        elif 'ct_1_1_1' in module_path:
-            return 'ct_1_1_1'
-        elif 'dataset_1_0_1' in module_path:
-            return 'dataset_1_0_1'
+        for marker, version in cls._MODULE_PATTERNS:
+            if marker in module_path:
+                return version
 
-        # Default to odm_1_3_2 for backward compatibility
+        if instance_class is not None:
+            for base in instance_class.__mro__[1:]:
+                base_module = getattr(base, '__module__', '')
+                if not base_module or base_module == 'builtins':
+                    continue
+                if base_module in cls._version_map:
+                    return cls._version_map[base_module]
+                for marker, version in cls._MODULE_PATTERNS:
+                    if marker in base_module:
+                        return version
+
         return 'odm_1_3_2'
 
 
@@ -74,12 +93,23 @@ class ValueSet:
 
     _compiled_regex_cache = {}  # (version, attribute) -> compiled re.Pattern
 
+    # Versions tried (in order) when an attribute is missing from the resolved
+    # version. Hybrid local models (e.g. an ODM 1.3.2 base extended with
+    # Define-XML 2.x attributes) need this to find Define-only keys.
+    _FALLBACK_VERSIONS = (
+        'define_2_1', 'define_2_0', 'odm_2_0', 'odm_1_3_2',
+        'ct_1_1_1', 'dataset_1_0_1',
+    )
+
     @classmethod
     def _resolve_version(cls, version, instance):
         """Resolve the version string from explicit value or instance."""
         if version is None and instance is not None:
-            module_path = type(instance).__module__
-            return ValueSetLoader.get_version_for_module(module_path)
+            instance_class = type(instance)
+            module_path = instance_class.__module__
+            return ValueSetLoader.get_version_for_module(
+                module_path, instance_class=instance_class,
+            )
         elif version is None:
             return 'odm_1_3_2'
         return version
@@ -118,11 +148,21 @@ class ValueSet:
         # Get attribute values
         if attribute in version_valueset:
             return version_valueset[attribute]
-        else:
-            raise OdmlibValidationError(
-                f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.",
-                hint=f"Attribute '{attribute}' is not defined in the value set for {version}",
-            )
+
+        # Cross-version fallback: hybrid local models (e.g. an ODM 1.3.2 base
+        # extended with def: attributes) may carry attribute keys that only
+        # exist in another shipped version's valueset. Search the others.
+        for other in cls._FALLBACK_VERSIONS:
+            if other == version:
+                continue
+            other_valueset = valuesets.get(other)
+            if other_valueset is not None and attribute in other_valueset:
+                return other_valueset[attribute]
+
+        raise OdmlibValidationError(
+            f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.",
+            hint=f"Attribute '{attribute}' is not defined in the value set for {version}",
+        )
 
     @classmethod
     def validate(cls, attribute, value, version=None, instance=None):

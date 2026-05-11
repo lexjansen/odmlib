@@ -83,6 +83,30 @@ class OdmlibElementOrderError(OdmlibValidationError):
     """Raised when child elements are not in the order required by the ODM spec."""
 
 
+class OdmlibSchemaValidationError(OdmlibValidationError):
+    """Raised when XSD/XML-Schema validation of an ODM document fails.
+
+    Wraps the underlying ``xmlschema`` exception raised during XSD
+    validation (e.g. by :meth:`ODMSchemaValidator.validate_file`). The
+    wrapped exception is available at ``args[0]`` (for backward
+    compatibility with callers that introspect ``ex.args[0].msg``) and
+    via the ``wrapped`` attribute.
+    """
+
+    def __init__(self, wrapped_exception, *, hint=None):
+        # Bypass OdmlibValidationError.__init__: it would replace args[0]
+        # with a formatted string and would crash on a non-string message.
+        # Preserve args[0] == wrapped exception for backward compatibility.
+        self.wrapped = wrapped_exception
+        self.element_path = None
+        self.hint = hint
+        self.attribute = None
+        self.element_type = None
+        self.actual_value = None
+        self._raw_message = str(wrapped_exception)
+        Exception.__init__(self, wrapped_exception)
+
+
 # ---------------------------------------------------------------------------
 # Type errors (currently raised as TypeError)
 # ---------------------------------------------------------------------------

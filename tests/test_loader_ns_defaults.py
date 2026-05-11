@@ -158,11 +158,19 @@ class TestODMLoaderNamespaceDefaults(TestCase):
         self.assertEqual("http://www.cdisc.org/ns/odm/v1.3", loader.ns_uri)
 
     def test_odm_explicit_ns_uri_now_takes_effect(self):
-        """Explicit ns_uri is now stored on the loader (was dead pre-fix)."""
+        """Explicit ns_uri is now stored on the loader (was dead pre-fix).
+
+        Construction itself no longer registers anything in the Borg
+        (mirrors XMLDefineLoader). The registration happens at parse time
+        via create_document / create_document_from_string, so we trigger
+        _set_namespace(None) explicitly to confirm the parameter still
+        reaches the registry it controls.
+        """
         custom = "http://example.com/custom/v9"
         loader = OL.XMLODMLoader(model_package="odm_1_3_2", ns_uri=custom)
         self.assertEqual(custom, loader.ns_uri)
-        # And it reaches the registry that _set_namespace creates.
+        # Trigger the deferred registration the way create_document would.
+        loader._set_namespace(None)
         self.assertEqual({"odm": custom},
                          loader.nsr.get_ns_entry_dict("odm"))
 
@@ -205,3 +213,84 @@ class TestDefine21OidCheckRegression(TestCase):
         # point at them, so len >= 1.
         self.assertGreaterEqual(len(idx.find_all("STD.2")), 1)
         self.assertGreaterEqual(len(idx.find_all("STD.1")), 1)
+
+
+# ---------------------------------------------------------------------------
+# XMLODMLoader: construction is side-effect-free w.r.t. the Borg singleton
+# ---------------------------------------------------------------------------
+
+class TestODMLoaderConstructionDoesNotMutateBorg(TestCase):
+    """Construction must not silently overwrite the global ``odm:`` mapping.
+
+    Reproduces the library_xml CDASH scenario at unit level (no API call):
+    the user pre-registers a custom prefix (``mdr``) and constructs
+    ``XMLODMLoader`` with a non-canonical ``ns_uri`` (the library-xml
+    wrapper). Pre-fix, ``__init__`` immediately rewrote the global Borg's
+    ``odm`` prefix to that wrapper URI, breaking the canonical ODM 1.3
+    mapping for any later code in the same process. Post-fix,
+    ``XMLODMLoader.__init__`` mirrors ``XMLDefineLoader.__init__`` — empty
+    Borg view, registration deferred to parse time.
+    """
+
+    def setUp(self) -> None:
+        _reset_ns()  # canonical odm -> v1.3
+
+    def test_construction_with_non_canonical_ns_uri_preserves_odm_mapping(self):
+        # Pre-register a custom prefix the way library_xml.py does.
+        NS.NamespaceRegistry(
+            prefix="mdr",
+            uri="http://www.cdisc.org/ns/library-xml/v1.0",
+        )
+
+        # Constructing the loader must NOT clobber odm -> v1.3 in the Borg.
+        OL.XMLODMLoader(
+            model_package="odm_1_3_2",
+            ns_uri="http://www.cdisc.org/ns/library-xml/v1.0",
+        )
+
+        nsr = NS.NamespaceRegistry()
+        self.assertEqual(
+            "http://www.cdisc.org/ns/odm/v1.3",
+            nsr.namespaces["odm"],
+            "Construction silently overwrote the canonical odm: mapping",
+        )
+        self.assertEqual(
+            "http://www.cdisc.org/ns/library-xml/v1.0",
+            nsr.namespaces["mdr"],
+        )
+
+    def test_construction_with_canonical_ns_uri_does_not_mutate(self):
+        """Symmetry: even passing a known URI doesn't touch the Borg."""
+        before = dict(NS.NamespaceRegistry().namespaces)
+        OL.XMLODMLoader(model_package="odm_2_0")
+        after = dict(NS.NamespaceRegistry().namespaces)
+        self.assertEqual(before, after)
+
+    def test_explicit_nsr_argument_still_replaces_self_nsr(self):
+        """Backwards-compat: passing nsr= still wires the loader to it."""
+        custom = NS.NamespaceRegistry()  # the shared Borg view
+        loader = OL.XMLODMLoader(model_package="odm_1_3_2", nsr=custom)
+        # The loader holds the explicitly-supplied registry.
+        self.assertIs(loader.nsr, custom)
+
+    def test_deferred_registration_happens_at_parse_time(self):
+        """After create_document_from_string, odm: is registered in the Borg.
+
+        The parameter is not dead -- it is just deferred. This guards
+        against accidentally regressing into a "ns_uri silently dropped"
+        state.
+        """
+        custom = "http://example.com/odm/v9"
+        loader = OL.XMLODMLoader(model_package="odm_1_3_2", ns_uri=custom)
+        # Minimal ODM string in the custom namespace; we only need
+        # the parser to run far enough to call _set_namespace(None).
+        odm_string = (
+            f'<ODM xmlns="{custom}" FileType="Snapshot" '
+            'FileOID="X" CreationDateTime="2024-01-01T00:00:00" '
+            'ODMVersion="1.3.2"/>'
+        )
+        loader.create_document_from_string(odm_string)
+        self.assertEqual(
+            {"odm": custom},
+            loader.nsr.get_ns_entry_dict("odm"),
+        )

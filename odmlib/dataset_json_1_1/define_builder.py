@@ -19,7 +19,9 @@ from collections import defaultdict
 from typing import Any, Optional
 
 import odmlib.define_2_1.model as DEF
+from odmlib import mode as _mode
 from odmlib.dataset_json_1_1.model import DatasetJSON
+from odmlib.exceptions import OdmlibTypeError
 
 
 # ------------------------------------------------------------------ #
@@ -39,18 +41,50 @@ def _split_ids(value: Optional[str]) -> list[str]:
     return [v.strip() for v in value.split(",")]
 
 
-def _int_or_none(value: Any) -> Optional[int]:
-    """Convert to int, handling None and float-from-JSON."""
+def _int_or_none(value: Any, field_name: Optional[str] = None) -> Optional[int]:
+    """Convert to int, handling None and float-from-JSON.
+
+    Under ``ValidationMode.SKIP_TYPE`` (permissive), returns the raw value
+    unchanged when conversion fails so the descriptor can store it as-is.
+    Otherwise raises :exc:`OdmlibTypeError` for parity with descriptor errors.
+    """
     if value is None:
         return None
-    return int(value)
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        if _mode.is_permissive(_mode.ValidationMode.SKIP_TYPE):
+            return value
+        raise OdmlibTypeError(
+            f"Expected integer for {field_name or 'attribute'} with value {value!r}",
+            attribute=field_name,
+            expected_type="int",
+            actual_value=value,
+            hint="Provide an integer or a string/float convertible to an integer",
+        )
 
 
-def _float_or_none(value: Any) -> Optional[float]:
-    """Convert to float, handling None."""
+def _float_or_none(value: Any, field_name: Optional[str] = None) -> Optional[float]:
+    """Convert to float, handling None.
+
+    Under ``ValidationMode.SKIP_TYPE`` (permissive), returns the raw value
+    unchanged when conversion fails so the descriptor can store it as-is.
+    Otherwise raises :exc:`OdmlibTypeError` for parity with descriptor errors.
+    """
     if value is None:
         return None
-    return float(value)
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        if _mode.is_permissive(_mode.ValidationMode.SKIP_TYPE):
+            return value
+        raise OdmlibTypeError(
+            f"Expected float for {field_name or 'attribute'} with value {value!r}",
+            attribute=field_name,
+            expected_type="float",
+            actual_value=value,
+            hint="Provide a number or a string convertible to a float",
+        )
 
 
 def _make_description(text: Optional[str]) -> Optional[DEF.Description]:
@@ -306,8 +340,8 @@ class DefineBuilder:
                 items = []
                 for t in terms:
                     cli_kwargs = {"CodedValue": t["CodedValue"]}
-                    _optional(cli_kwargs, "Rank", _float_or_none(t["Rank"]))
-                    _optional(cli_kwargs, "OrderNumber", _int_or_none(t["OrderNumber"]))
+                    _optional(cli_kwargs, "Rank", _float_or_none(t["Rank"], "Rank"))
+                    _optional(cli_kwargs, "OrderNumber", _int_or_none(t["OrderNumber"], "OrderNumber"))
                     _optional(cli_kwargs, "ExtendedValue", t["ExtendedValue"])
                     if t["DecodedText"] is not None:
                         cli_kwargs["Decode"] = DEF.Decode(
@@ -319,8 +353,8 @@ class DefineBuilder:
                 items = []
                 for t in terms:
                     ei_kwargs = {"CodedValue": t["CodedValue"]}
-                    _optional(ei_kwargs, "Rank", _float_or_none(t["Rank"]))
-                    _optional(ei_kwargs, "OrderNumber", _int_or_none(t["OrderNumber"]))
+                    _optional(ei_kwargs, "Rank", _float_or_none(t["Rank"], "Rank"))
+                    _optional(ei_kwargs, "OrderNumber", _int_or_none(t["OrderNumber"], "OrderNumber"))
                     _optional(ei_kwargs, "ExtendedValue", t["ExtendedValue"])
                     items.append(DEF.EnumeratedItem(**ei_kwargs))
                 kwargs["EnumeratedItem"] = items
@@ -369,8 +403,8 @@ class DefineBuilder:
                 "Name": row["Name"],
                 "DataType": row["DataType"],
             }
-            _optional(kwargs, "Length", _int_or_none(row["Length"]))
-            _optional(kwargs, "SignificantDigits", _int_or_none(row["SignificantDigits"]))
+            _optional(kwargs, "Length", _int_or_none(row["Length"], "Length"))
+            _optional(kwargs, "SignificantDigits", _int_or_none(row["SignificantDigits"], "SignificantDigits"))
             _optional(kwargs, "SASFieldName", row["SASFieldName"])
             _optional(kwargs, "DisplayFormat", row["DisplayFormat"])
             _optional(kwargs, "CommentOID", row["CommentOID"])
@@ -413,7 +447,7 @@ class DefineBuilder:
                     "ItemOID": r["ItemOID"],
                     "Mandatory": r["Mandatory"],
                 }
-                _optional(ir_kwargs, "OrderNumber", _int_or_none(r["OrderNumber"]))
+                _optional(ir_kwargs, "OrderNumber", _int_or_none(r["OrderNumber"], "OrderNumber"))
                 _optional(ir_kwargs, "MethodOID", r["MethodOID"])
                 if r.get("WhereClauseOID"):
                     ir_kwargs["WhereClauseRef"] = [
@@ -479,8 +513,8 @@ class DefineBuilder:
                     "ItemOID": v["ItemOID"],
                     "Mandatory": v["Mandatory"],
                 }
-                _optional(ir_kwargs, "OrderNumber", _int_or_none(v["OrderNumber"]))
-                _optional(ir_kwargs, "KeySequence", _int_or_none(v["KeySequence"]))
+                _optional(ir_kwargs, "OrderNumber", _int_or_none(v["OrderNumber"], "OrderNumber"))
+                _optional(ir_kwargs, "KeySequence", _int_or_none(v["KeySequence"], "KeySequence"))
                 _optional(ir_kwargs, "MethodOID", v["MethodOID"])
                 _optional(ir_kwargs, "Role", v["Role"])
                 _optional(ir_kwargs, "RoleCodeListOID", v["RoleCodeListOID"])

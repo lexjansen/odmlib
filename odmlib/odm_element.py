@@ -225,8 +225,15 @@ class ODMElement(metaclass=ODMMeta):
         return json.dumps(self.to_dict())
 
     def to_xml(self, parent_elem: Optional[ET.Element] = None, top_elem: Optional[ET.Element] = None) -> Optional[ET.Element]:
-        """
-        generates ElementTree XML from the odmlib object hierarchy
+        """Generate ElementTree XML from the odmlib object hierarchy.
+
+        Children are emitted in the model declaration order recorded in
+        ``_elems`` by :class:`ODMMeta` (i.e. the order in which descriptors
+        appear in the class body of the relevant model module). Attribute
+        insertion order on the instance does not affect the output, so users
+        do not need to call :meth:`reorder_object` before serializing.
+
+        Optional children that were never assigned are silently skipped.
 
         :param parent_elem: (obj) Element that is the parent of the element to be created
         :param top_elem: (obj) Topmost element that has been created
@@ -251,8 +258,10 @@ class ODMElement(metaclass=ODMMeta):
         # add text to element if it exists
         if "_content" in self.__dict__:
             odm_elem.text = self.__dict__["_content"]
-        for name, obj in self.__dict__.items():
-            # process each element in a list of ELEMENTS
+        # emit children in model declaration order (driven by _elems), not __dict__ insertion order,
+        # so the schema's required element ordering is preserved regardless of how the user assigned attributes.
+        for name in self._elems:
+            obj = self.__dict__.get(name)
             if isinstance(obj, list) and obj:
                 for o in obj:
                     o.to_xml(odm_elem, top_elem)
@@ -482,8 +491,34 @@ class ODMElement(metaclass=ODMMeta):
     def verify_order(self) -> bool:
         """Verify that child elements are in the model declaration order.
 
-        ODM requires specific element ordering in XML output. Recursively
-        checks this element and all descendants.
+        Recursively checks this element and all descendants — calling at
+        the odmlib root covers the whole document. Works on any
+        :class:`ODMElement` subclass; not applicable to
+        :class:`xml.etree.ElementTree.Element` (load through a loader
+        first if you only have an ElementTree).
+
+        Limitations:
+
+        * Each class's expected order comes from descriptors declared in
+          its own class body. Custom extensions that subclass a model
+          class must redeclare base children in schema order — otherwise
+          inherited children are flagged as unexpected.
+        * In permissive mode (:class:`~odmlib.mode.ValidationMode.SKIP_TYPE`)
+          unknown attributes can land in ``__dict__``; they will trip
+          this check until cleaned up.
+        * Only the order of *different* child element kinds is checked.
+          Order within a single list (e.g. multiple ``ItemRef`` entries)
+          is not validated — ODM relies on ``OrderNumber`` attributes
+          for that.
+        * Completeness is not checked. Missing required children must be
+          caught via :meth:`verify_conformance` or :meth:`validate`.
+
+        Note:
+            :meth:`to_xml` / :meth:`write_xml` already emit children in
+            ``_elems`` order, so ``verify_order()`` is **not** required
+            before XML serialization. It is still useful before
+            :meth:`to_dict` / :meth:`to_json`, which walk ``__dict__``
+            and therefore reflect instance assignment order.
 
         Returns:
             bool: True if ordering is correct.

@@ -12,6 +12,7 @@ from odmlib.exceptions import (
     OdmlibOIDError,
     OdmlibConformanceError,
     OdmlibElementOrderError,
+    OdmlibSchemaValidationError,
     OdmlibTypeError,
     OdmlibParsingError,
     OdmlibLoaderStateError,

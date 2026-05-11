@@ -31,6 +31,12 @@ class TestGetSchemaDir(TestCase):
         self.assertIsInstance(path, str)
         self.assertGreater(len(path), 0)
 
+    def test_odm_20(self):
+        path = SM.get_schema_dir("odm", "2.0")
+        self.assertIsInstance(path, str)
+        self.assertGreater(len(path), 0)
+        self.assertIn("2.0", path)
+
     def test_path_contains_version(self):
         path = SM.get_schema_dir("odm", "1.3.2")
         self.assertIn("1.3.2", path)
@@ -69,6 +75,21 @@ class TestGetSchemaPath(TestCase):
     def test_define_21_ends_with_xsd(self):
         path = SM.get_schema_path("define", "2.1")
         self.assertTrue(path.endswith(".xsd"), f"Expected .xsd extension, got: {path}")
+
+    def test_odm_20_returns_string(self):
+        path = SM.get_schema_path("odm", "2.0")
+        self.assertIsInstance(path, str)
+        self.assertGreater(len(path), 0)
+
+    def test_odm_20_ends_with_xsd(self):
+        path = SM.get_schema_path("odm", "2.0")
+        self.assertTrue(path.endswith(".xsd"), f"Expected .xsd extension, got: {path}")
+
+    def test_odm_20_main_filename_is_ODM_xsd(self):
+        # Pin the registered main filename, not just the extension —
+        # catches an accidental rename of the bundled main schema.
+        path = SM.get_schema_path("odm", "2.0")
+        self.assertTrue(path.endswith("ODM.xsd"), f"Expected ODM.xsd, got: {path}")
 
     def test_explicit_filename(self):
         path = SM.get_schema_path("odm", "1.3.2", filename="ODM1-3-2.xsd")
@@ -131,5 +152,10 @@ class TestSchemaManagerIntegration(TestCase):
 
     def test_define_20_xsd_exists(self):
         path = SM.get_schema_path("define", "2.0")
+        if not self._file_exists_at_path(path):
+            self.skipTest(f"Schema file not found at {path} (may be packaged differently)")
+
+    def test_odm_20_xsd_exists(self):
+        path = SM.get_schema_path("odm", "2.0")
         if not self._file_exists_at_path(path):
             self.skipTest(f"Schema file not found at {path} (may be packaged differently)")

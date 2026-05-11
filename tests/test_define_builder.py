@@ -6,8 +6,10 @@ from unittest import TestCase
 import odmlib.define_2_1.model as DEF
 import odmlib.define_loader as DL
 import odmlib.loader as LD
+from odmlib import permissive, ValidationMode
 from odmlib.dataset_json_1_1 import DefineFlattener, DefineBuilder
 from odmlib.dataset_json_1_1.model import DatasetJSON, Column
+from odmlib.exceptions import OdmlibTypeError
 
 
 def _make_test_dataset(name, columns, rows):
@@ -506,3 +508,137 @@ class TestDefineBuilderFileIO(TestCase):
             self.assertEqual(
                 len(rebuilt.Study.MetaDataVersion.ItemGroupDef),
                 len(odm.Study.MetaDataVersion.ItemGroupDef))
+
+
+class TestDefineBuilderPermissive(TestCase):
+    """Verify permissive() applies to DefineBuilder via the descriptor layer.
+
+    DefineBuilder has no permissive plumbing of its own. It constructs ODM
+    objects through the standard DEF.ClassName(**kwargs) path, so a
+    process-wide permissive() context bypasses validation during build().
+    """
+
+    VARIABLES_COLS = [
+        "DatasetOID", "ItemOID", "Name", "DataType",
+        "Length", "SignificantDigits", "SASFieldName", "DisplayFormat",
+        "CommentOID", "DescriptionText",
+        "ValueListOID", "CodeListOID", "OriginType", "OriginSource",
+        "Mandatory", "OrderNumber", "KeySequence", "MethodOID",
+        "Role", "RoleCodeListOID", "IsNonStandard", "HasNoData",
+    ]
+
+    def _datasets_with_bad_datatype(self):
+        # One ItemDef row with an invalid DataType valueset value.
+        row = [
+            "IG.TEST",            # DatasetOID
+            "IT.TEST.AETERM",     # ItemOID
+            "AETERM",             # Name
+            "bogus",              # DataType — fails ValidValues under strict
+            None, None, None, None, None, None,
+            None, None, None, None,
+            None, None, None, None, None, None, None, None,
+        ]
+        variables = _make_test_dataset("variables", self.VARIABLES_COLS, [row])
+        return _make_empty_datasets(variables=variables)
+
+    def test_invalid_valueset_fails_strict(self):
+        datasets = self._datasets_with_bad_datatype()
+        with self.assertRaises(OdmlibTypeError):
+            DefineBuilder(datasets).build()
+
+    def test_invalid_valueset_succeeds_under_permissive(self):
+        datasets = self._datasets_with_bad_datatype()
+        with permissive():
+            rebuilt = DefineBuilder(datasets).build()
+        self.assertIsInstance(rebuilt, DEF.ODM)
+        item_def = rebuilt.Study.MetaDataVersion.ItemDef[0]
+        self.assertEqual(item_def.OID, "IT.TEST.AETERM")
+        self.assertEqual(item_def.DataType, "bogus")
+
+    def test_targeted_skip_valueset_only(self):
+        datasets = self._datasets_with_bad_datatype()
+        with permissive(ValidationMode.SKIP_VALUESET):
+            rebuilt = DefineBuilder(datasets).build()
+        self.assertIsInstance(rebuilt, DEF.ODM)
+        self.assertEqual(
+            rebuilt.Study.MetaDataVersion.ItemDef[0].DataType, "bogus")
+
+    # ------------------------------------------------------------------ #
+    # Text-in-numeric-field tests — exercise _int_or_none / _float_or_none
+    # end-to-end through DefineBuilder.build().
+    # ------------------------------------------------------------------ #
+
+    def _datasets_with_bad_length(self):
+        # variables row with non-numeric Length (gated by _int_or_none).
+        row = [
+            "IG.TEST",            # DatasetOID
+            "IT.TEST.AETERM",     # ItemOID
+            "AETERM",             # Name
+            "text",               # DataType
+            "notanumber",         # Length — non-numeric
+            None, None, None, None, None,
+            None, None, None, None,
+            None, None, None, None, None, None, None, None,
+        ]
+        variables = _make_test_dataset("variables", self.VARIABLES_COLS, [row])
+        return _make_empty_datasets(variables=variables)
+
+    def test_invalid_length_fails_strict(self):
+        datasets = self._datasets_with_bad_length()
+        with self.assertRaises(OdmlibTypeError) as cm:
+            DefineBuilder(datasets).build()
+        self.assertEqual(cm.exception.attribute, "Length")
+        self.assertEqual(cm.exception.expected_type, "int")
+        self.assertEqual(cm.exception.actual_value, "notanumber")
+
+    def test_invalid_length_succeeds_under_permissive(self):
+        datasets = self._datasets_with_bad_length()
+        with permissive():
+            rebuilt = DefineBuilder(datasets).build()
+        self.assertIsInstance(rebuilt, DEF.ODM)
+        item_def = rebuilt.Study.MetaDataVersion.ItemDef[0]
+        self.assertEqual(item_def.OID, "IT.TEST.AETERM")
+        self.assertEqual(item_def.Length, "notanumber")
+
+    def test_invalid_length_targeted_skip_type_only(self):
+        datasets = self._datasets_with_bad_length()
+        with permissive(ValidationMode.SKIP_TYPE):
+            rebuilt = DefineBuilder(datasets).build()
+        self.assertIsInstance(rebuilt, DEF.ODM)
+        self.assertEqual(
+            rebuilt.Study.MetaDataVersion.ItemDef[0].Length, "notanumber")
+
+    def test_invalid_rank_succeeds_under_permissive(self):
+        # codelist term with non-numeric Rank — exercises _float_or_none.
+        cl_ds = _make_test_dataset("codelists", [
+            "OID", "Name", "DataType", "IsNonStandard", "StandardOID",
+            "SASFormatName", "CommentOID", "DescriptionText",
+            "ExternalDictionary", "ExternalVersion", "ExternalRef", "ExternalHref",
+        ], [
+            ["CL.SEX", "Sex", "text", None, None, None, None, None,
+             None, None, None, None],
+        ])
+        term_ds = _make_test_dataset("codelist_terms", [
+            "CodeListOID", "CodedValue", "Rank", "OrderNumber",
+            "ExtendedValue", "DecodedText",
+        ], [
+            ["CL.SEX", "M", "notanumber", 1, None, "Male"],
+        ])
+        datasets = _make_empty_datasets(
+            codelists=cl_ds, codelist_terms=term_ds)
+        with permissive():
+            rebuilt = DefineBuilder(datasets).build()
+        cl = rebuilt.Study.MetaDataVersion.CodeList[0]
+        self.assertEqual(cl.CodeListItem[0].Rank, "notanumber")
+
+    def test_valid_float_from_json_still_works(self):
+        # JSON often delivers integers as floats (e.g. 1.0). The helpers must
+        # still coerce them under strict mode — guard the original happy path
+        # that motivated the helpers' existence.
+        from odmlib.dataset_json_1_1.define_builder import (
+            _int_or_none, _float_or_none,
+        )
+        self.assertEqual(_int_or_none(1.0), 1)
+        self.assertIsNone(_int_or_none(None))
+        self.assertEqual(_float_or_none(2), 2.0)
+        self.assertIsNone(_float_or_none(None))

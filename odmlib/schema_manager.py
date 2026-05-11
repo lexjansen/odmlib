@@ -5,6 +5,7 @@ from odmlib.exceptions import OdmlibValidationError
 # Map main schema filenames by standard/version
 _MAIN_SCHEMA = {
     ("odm", "1.3.2"): "ODM1-3-2.xsd",
+    ("odm", "2.0"): "ODM.xsd",
     ("define", "2.0"): "define2-0-0.xsd",
     ("define", "2.1"): "define2-1-0.xsd",
 }
