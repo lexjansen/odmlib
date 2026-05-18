@@ -136,8 +136,31 @@ class DefineBuilder:
         "codelists", "codelist_terms",
     ]
 
+    # Optional lossless-roundtrip extension datasets
+    EXTRA_TABLE_NAMES = ["aliases", "origins"]
+
     def __init__(self, datasets: dict[str, DatasetJSON]):
         self.datasets = datasets
+        self._post_build_hooks: list = []
+
+    def add_post_build_hook(self, hook) -> "DefineBuilder":
+        """Register a callable invoked with the assembled ODM root.
+
+        The hook runs just before :meth:`build` returns, enabling
+        insertion of Define-XML elements the 11 datasets cannot express
+        (e.g. ``Alias``, full ``Origin``/``DocumentRef`` trees,
+        ``AnnotatedCRF``).  If the hook returns a non-``None`` value it
+        replaces the ODM root.
+
+        Args:
+            hook: Callable taking the ``DEF.ODM`` root; may mutate it
+                in place or return a replacement.
+
+        Returns:
+            DefineBuilder: self, for chaining.
+        """
+        self._post_build_hooks.append(hook)
+        return self
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -171,7 +194,15 @@ class DefineBuilder:
             standards=standards,
         )
 
-        return self._build_odm(mdv)
+        self._apply_origins(mdv)
+        self._apply_aliases(mdv)
+
+        odm = self._build_odm(mdv)
+        for hook in self._post_build_hooks:
+            replacement = hook(odm)
+            if replacement is not None:
+                odm = replacement
+        return odm
 
     @classmethod
     def read_all(cls, input_dir: str) -> dict[str, DatasetJSON]:
@@ -190,6 +221,10 @@ class DefineBuilder:
         for name in cls.TABLE_NAMES:
             path = os.path.join(input_dir, f"{name}.json")
             result[name] = DatasetJSON.read_json(path)
+        for name in cls.EXTRA_TABLE_NAMES:
+            path = os.path.join(input_dir, f"{name}.json")
+            if os.path.exists(path):
+                result[name] = DatasetJSON.read_json(path)
         return result
 
     # ------------------------------------------------------------------ #
@@ -197,8 +232,15 @@ class DefineBuilder:
     # ------------------------------------------------------------------ #
 
     def _rows_as_dicts(self, dataset_name: str) -> list[dict]:
-        """Convert DatasetJSON rows to a list of dicts keyed by column name."""
-        ds = self.datasets[dataset_name]
+        """Convert DatasetJSON rows to a list of dicts keyed by column name.
+
+        Returns an empty list for an absent dataset so the optional
+        lossless-extension tables (``aliases``, ``origins``) are not
+        required for backward compatibility.
+        """
+        ds = self.datasets.get(dataset_name)
+        if ds is None:
+            return []
         col_names = [c.name for c in ds.columns]
         rows = getattr(ds, "rows", None) or []
         return [dict(zip(col_names, row)) for row in rows]
@@ -547,6 +589,74 @@ class DefineBuilder:
             standard_list.append(DEF.Standard(**kwargs))
 
         return DEF.Standards(Standard=standard_list)
+
+    # ------------------------------------------------------------------ #
+    # Lossless-roundtrip post-passes (no-op when the dataset is absent)
+    # ------------------------------------------------------------------ #
+
+    def _apply_origins(self, mdv: DEF.MetaDataVersion) -> None:
+        """Replace inline Origins with the full origins-dataset trees.
+
+        The variables/value_level tables only carry the first Origin's
+        Type and Source.  When the optional ``origins`` dataset is
+        present it is authoritative: every ItemDef it names has its
+        Origin list rebuilt with Description and DocumentRef children.
+        """
+        rows = self._rows_as_dicts("origins")
+        if not rows:
+            return
+        by_item: dict[str, list] = defaultdict(list)
+        for r in rows:
+            kwargs = {"Type": r["Type"]}
+            _optional(kwargs, "Source", r["Source"])
+            text = r.get("DescriptionText")
+            if text is not None:
+                lang = r.get("DescriptionLang")
+                tt = (DEF.TranslatedText(_content=text, lang=lang)
+                      if lang else DEF.TranslatedText(_content=text))
+                kwargs["Description"] = DEF.Description(TranslatedText=[tt])
+            doc_refs = _make_doc_refs(r.get("DocumentRefLeafIDs"))
+            if doc_refs:
+                kwargs["DocumentRef"] = doc_refs
+            order = _int_or_none(r.get("OrderNumber"), "OrderNumber") or 0
+            by_item[r["ItemOID"]].append((order, DEF.Origin(**kwargs)))
+        for item_def in getattr(mdv, "ItemDef", None) or []:
+            if item_def.OID in by_item:
+                ordered = sorted(by_item[item_def.OID], key=lambda t: t[0])
+                item_def.Origin = [origin for _, origin in ordered]
+
+    def _apply_aliases(self, mdv: DEF.MetaDataVersion) -> None:
+        """Attach Alias elements from the optional ``aliases`` dataset."""
+        rows = self._rows_as_dicts("aliases")
+        if not rows:
+            return
+        igd_by_oid = {x.OID: x for x in getattr(mdv, "ItemGroupDef", None) or []}
+        idf_by_oid = {x.OID: x for x in getattr(mdv, "ItemDef", None) or []}
+        cl_by_oid = {x.OID: x for x in getattr(mdv, "CodeList", None) or []}
+
+        def _term(cl, member):
+            for t in (getattr(cl, "CodeListItem", None) or []) + \
+                     (getattr(cl, "EnumeratedItem", None) or []):
+                if getattr(t, "CodedValue", None) == member:
+                    return t
+            return None
+
+        for r in rows:
+            ptype, poid, member = r["ParentType"], r["ParentOID"], r["Member"]
+            alias = DEF.Alias(Context=r["Context"], Name=r["Name"])
+            if ptype == "ItemGroupDef":
+                target = igd_by_oid.get(poid)
+            elif ptype == "ItemDef":
+                target = idf_by_oid.get(poid)
+            elif ptype == "CodeList":
+                target = cl_by_oid.get(poid)
+            elif ptype in ("CodeListItem", "EnumeratedItem"):
+                cl = cl_by_oid.get(poid)
+                target = _term(cl, member) if cl is not None else None
+            else:
+                target = None
+            if target is not None:
+                target.Alias.append(alias)
 
     def _build_metadata_version(self, *, item_group_defs, item_defs,
                                  code_lists, method_defs, value_list_defs,

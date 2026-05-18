@@ -6,9 +6,11 @@ Covers:
 - metadata_to_dataframe(): scalar attribute extraction, attribute filtering
 - clinical_data_to_dataframe(): hierarchical ODM 1.3.2 data flattening
 - dataset_to_dataframe(): Dataset-XML 1.0.1 flat ClinicalData
-- dataset_json_to_dataframe(): Dataset-JSON Dataset object
 - dataframe_to_items(): DataFrame rows → odmlib element instances
 - _require_pandas(): ImportError when pandas absent (mocked)
+
+dataset_json_to_dataframe() coverage lives in test_dataframe_phase3.py
+(TestDatasetJSON11ToDataFrame).
 """
 import unittest
 
@@ -161,70 +163,6 @@ class TestDatasetToDataFrame(unittest.TestCase):
         clinical = DSX.ClinicalData(StudyOID="S.001", MetaDataVersionOID="MDV.001")
         df = dataset_to_dataframe(clinical)
         self.assertEqual(len(df), 0)
-
-
-@unittest.skipUnless(HAS_PANDAS, "pandas not installed")
-class TestDatasetJSONToDataFrame(unittest.TestCase):
-    """Tests for dataset_json_to_dataframe()."""
-
-    def _make_dataset(self):
-        from odmlib.dataset_json.model import Dataset, ItemMetadata, DatasetRecord
-        items = [
-            ItemMetadata(OID="IT.A", name="A", label="Var A", type="string"),
-            ItemMetadata(OID="IT.B", name="B", label="Var B", type="integer"),
-            ItemMetadata(OID="IT.C", name="C", label="Var C", type="float"),
-        ]
-        ds = Dataset(name="DM", label="Demographics", items=items)
-        ds.records.append(DatasetRecord(["val1", 1, 1.5]))
-        ds.records.append(DatasetRecord(["val2", 2, 2.5]))
-        return ds
-
-    def test_returns_dataframe(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        ds = self._make_dataset()
-        df = dataset_json_to_dataframe(ds)
-        self.assertIsInstance(df, pd.DataFrame)
-
-    def test_columns_are_variable_names(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        ds = self._make_dataset()
-        df = dataset_json_to_dataframe(ds)
-        self.assertEqual(list(df.columns), ["A", "B", "C"])
-
-    def test_row_count(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        ds = self._make_dataset()
-        df = dataset_json_to_dataframe(ds)
-        self.assertEqual(len(df), 2)
-
-    def test_values(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        ds = self._make_dataset()
-        df = dataset_json_to_dataframe(ds)
-        self.assertEqual(df.iloc[0]["A"], "val1")
-        self.assertEqual(df.iloc[1]["B"], 2)
-        self.assertAlmostEqual(df.iloc[0]["C"], 1.5)
-
-    def test_empty_dataset(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        from odmlib.dataset_json.model import Dataset, ItemMetadata
-        items = [ItemMetadata(OID="IT.A", name="A", label="", type="string")]
-        ds = Dataset(name="AE", label="", items=items)
-        df = dataset_json_to_dataframe(ds)
-        self.assertEqual(len(df), 0)
-        self.assertIn("A", df.columns)
-
-    def test_none_values_preserved(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        from odmlib.dataset_json.model import Dataset, ItemMetadata, DatasetRecord
-        items = [
-            ItemMetadata(OID="IT.A", name="A", label="", type="string"),
-            ItemMetadata(OID="IT.B", name="B", label="", type="integer"),
-        ]
-        ds = Dataset(name="AE", label="", items=items)
-        ds.records.append(DatasetRecord(["val", None]))
-        df = dataset_json_to_dataframe(ds)
-        self.assertIsNone(df.iloc[0]["B"])
 
 
 @unittest.skipUnless(HAS_PANDAS, "pandas not installed")

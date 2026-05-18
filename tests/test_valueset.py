@@ -129,12 +129,31 @@ class TestValueSet(TestCase):
             self.assertIsInstance(entry, dict, f"Expected dict for {version}")
             self.assertIn("_regex", entry)
 
-    def test_error_unknown_attribute(self):
-        """Test error handling for unknown attribute"""
-        with self.assertRaises(ValueError) as context:
-            VS.ValueSet.value_set("UnknownClass.UnknownAttribute", version='odm_1_3_2')
-        self.assertIn("Unknown value", str(context.exception))
-        self.assertIn("UnknownClass.UnknownAttribute", str(context.exception))
+    def test_unknown_attribute_returns_sentinel(self):
+        """Unknown attribute returns the UNKNOWN_ATTRIBUTE sentinel (no raise).
+
+        Contract change (ODM20 plan §3.10): value_set() no longer raises for
+        an unknown *attribute* — it returns ValueSet.UNKNOWN_ATTRIBUTE so the
+        SKIP_VALUESET permissive guard can take effect. Unknown *version*
+        still raises (see test_error_unknown_version).
+        """
+        result = VS.ValueSet.value_set(
+            "UnknownClass.UnknownAttribute", version='odm_1_3_2')
+        self.assertIs(result, VS.ValueSet.UNKNOWN_ATTRIBUTE)
+
+    def test_validate_unknown_attribute_returns_false(self):
+        """validate() returns False (not raise) for an unregistered attribute."""
+        self.assertFalse(
+            VS.ValueSet.validate(
+                "UnknownClass.UnknownAttribute", "anything",
+                version='odm_1_3_2'))
+
+    def test_describe_unknown_attribute_returns_string(self):
+        """describe() returns an explanatory string (must not raise)."""
+        self.assertEqual(
+            VS.ValueSet.describe(
+                "UnknownClass.UnknownAttribute", version='odm_1_3_2'),
+            "No registered value set for UnknownClass.UnknownAttribute")
 
     def test_error_unknown_version(self):
         """Test error handling for unknown version"""
@@ -332,3 +351,57 @@ class TestValueSetIntegration(TestCase):
 
         with self.assertRaises(TypeError):
             mdv.DefineVersion = "1.0"
+
+
+class TestODM2ValueSetKeys(TestCase):
+    """3.9: the 12 odm_2_0 value-set keys resolve to authoritative
+    odm_2_0 entries (not borrowed via cross-version fallback)."""
+
+    YESONLY = [
+        "CodeList.IsNonStandard", "CodeListItem.Other",
+        "ItemGroupDef.HasNoData", "ItemGroupDef.IsNonStandard",
+        "ItemRef.HasNoData", "ItemRef.IsNonStandard", "ItemRef.Other",
+        "ItemRef.Repeat",
+    ]
+    FALLBACK_KEYS = [
+        "ItemRef.IsNonStandard", "ItemRef.HasNoData",
+        "ItemGroupDef.IsNonStandard", "ItemGroupDef.HasNoData",
+        "CodeList.IsNonStandard", "ODM.Context",
+    ]
+
+    def setUp(self):
+        VS.ValueSetLoader._cache = None
+        VS.ValueSetLoader._version_map = None
+        VS.ValueSet._compiled_regex_cache.clear()
+
+    def test_all_twelve_keys_present_in_odm_2_0(self):
+        keys = self.YESONLY + [
+            "ItemRef.Core", "ODM.Context", "ReturnValue.DataType",
+            "Telecom.TelecomType",
+        ]
+        for k in keys:
+            entry = VS.ValueSet.value_set(k, version="odm_2_0")
+            self.assertIsNot(entry, VS.ValueSet.UNKNOWN_ATTRIBUTE,
+                             f"{k} missing from odm_2_0")
+            self.assertIsInstance(entry, list)
+
+    def test_yesonly_keys_are_single_value(self):
+        for k in self.YESONLY:
+            self.assertEqual(
+                VS.ValueSet.value_set(k, version="odm_2_0"), ["Yes"])
+
+    def test_core_and_context_values(self):
+        self.assertEqual(
+            VS.ValueSet.value_set("ItemRef.Core", version="odm_2_0"),
+            ["Cond", "Exp", "Perm", "Req", "HR", "O", "R/C"])
+        self.assertEqual(
+            VS.ValueSet.value_set("ODM.Context", version="odm_2_0"),
+            ["Archive", "Exchange", "Submission"])
+
+    def test_fallback_keys_now_resolve_to_odm_2_0(self):
+        """The 6 keys that used to borrow Define-XML lists now hit the
+        authoritative odm_2_0 entry directly (not the define_2_1 object)."""
+        for k in self.FALLBACK_KEYS:
+            o = VS.ValueSet.value_set(k, version="odm_2_0")
+            d = VS.ValueSet.value_set(k, version="define_2_1")
+            self.assertIsNot(o, d, f"{k} still resolving via fallback")

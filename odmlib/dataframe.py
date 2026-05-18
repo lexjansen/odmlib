@@ -31,9 +31,8 @@ Functions
     hierarchy) into a tabular DataFrame with one row per ItemGroupData record.
 
 :func:`dataset_json_to_dataframe`
-    Convert a Dataset-JSON dataset object to a DataFrame.  Supports both
-    the legacy :class:`~odmlib.dataset_json.model.Dataset` and the new
-    :class:`~odmlib.dataset_json_1_1.model.DatasetJSON`.
+    Convert a :class:`~odmlib.dataset_json_1_1.model.DatasetJSON` object
+    to a DataFrame.
 
 :func:`define_metadata_to_dataframes`
     Flatten all Define-XML v2.1 metadata into a dict of DataFrames, one
@@ -209,19 +208,13 @@ def dataset_to_dataframe(clinical_data: Any) -> "pd.DataFrame":
 
 
 def dataset_json_to_dataframe(dataset: Any) -> "pd.DataFrame":
-    """Convert a Dataset-JSON dataset object to a Pandas DataFrame.
+    """Convert a Dataset-JSON v1.1 dataset object to a Pandas DataFrame.
 
-    Supports both the legacy ``odmlib.dataset_json.model.Dataset`` and
-    the new ``odmlib.dataset_json_1_1.model.DatasetJSON``.
-
-    For the new ``DatasetJSON`` model, column names come from the
-    ``column_names`` property and row data from ``rows`` (list of lists).
-
-    For the legacy ``Dataset`` model, column names come from
-    ``item_names`` and rows from ``records`` (list of ``DatasetRecord``).
+    Column names come from the :attr:`DatasetJSON.column_names` property
+    and row data from :attr:`DatasetJSON.rows` (list of lists).
 
     Args:
-        dataset: A ``Dataset`` (legacy) or ``DatasetJSON`` (v1.1) object.
+        dataset: An :class:`odmlib.dataset_json_1_1.model.DatasetJSON` object.
 
     Returns:
         A :class:`pandas.DataFrame` with one row per record and columns
@@ -241,16 +234,9 @@ def dataset_json_to_dataframe(dataset: Any) -> "pd.DataFrame":
     """
     _require_pandas()
 
-    # New DatasetJSON v1.1 model: has column_names property and rows as list of lists
-    if hasattr(dataset, "column_names") and hasattr(dataset, "rows"):
-        col_names = dataset.column_names
-        rows = dataset.rows if dataset.rows else []
-        return pd.DataFrame(rows, columns=col_names)
-
-    # Legacy Dataset model: has item_names and records (list of DatasetRecord)
-    column_names = dataset.item_names
-    rows = [rec.values for rec in dataset.records]
-    return pd.DataFrame(rows, columns=column_names)
+    col_names = dataset.column_names
+    rows = dataset.rows if dataset.rows else []
+    return pd.DataFrame(rows, columns=col_names)
 
 
 def define_metadata_to_dataframes(

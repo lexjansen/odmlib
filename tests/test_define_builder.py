@@ -299,6 +299,33 @@ class TestDefineBuilderStandards(TestCase):
 class TestDefineBuilderBuild(TestCase):
     """Test the full build() method."""
 
+    def test_post_build_hook_mutates_root(self):
+        """A post-build hook can inject elements the 11 datasets omit."""
+        builder = DefineBuilder(_make_empty_datasets())
+
+        def add_alias(odm):
+            odm.Study.MetaDataVersion.ItemGroupDef.append(
+                DEF.ItemGroupDef(OID="IG.HOOK", Name="Hooked",
+                                 Repeating="No",
+                                 Structure="One record per subject",
+                                 Alias=[DEF.Alias(Context="x", Name="y")]))
+
+        odm = builder.add_post_build_hook(add_alias).build()
+        igd = odm.Study.MetaDataVersion.ItemGroupDef[0]
+        self.assertEqual(igd.OID, "IG.HOOK")
+        self.assertEqual(igd.Alias[0].Name, "y")
+
+    def test_post_build_hook_replacement(self):
+        """A hook returning a value replaces the ODM root."""
+        builder = DefineBuilder(_make_empty_datasets())
+
+        def replace(root):
+            root.FileOID = "REPLACED"
+            return root  # non-None return becomes the new root
+
+        odm = builder.add_post_build_hook(replace).build()
+        self.assertEqual(odm.FileOID, "REPLACED")
+
     def test_minimal_build(self):
         """Build with just study metadata and no child elements."""
         builder = DefineBuilder(_make_empty_datasets())
@@ -344,6 +371,56 @@ class TestDefineBuilderRoundtrip(TestCase):
         self.assertEqual(rebuilt.FileOID, original.FileOID)
         self.assertEqual(rebuilt.Study.OID, original.Study.OID)
         self.assertEqual(rebuilt_mdv.DefineVersion, orig_mdv.DefineVersion)
+
+    def test_roundtrip_alias_and_full_origin_lossless(self):
+        """Alias (all 5 owners) + full Origin survive flatten -> rebuild."""
+        original = self._load_define(
+            "tests/data/defineV21-SDTM-metadata.xml")
+        omdv = original.Study.MetaDataVersion
+        igd = omdv.ItemGroupDef[0]
+        idf = omdv.ItemDef[0]
+        cl = omdv.CodeList[0]
+        terms = (list(getattr(cl, "CodeListItem", None) or [])
+                 + list(getattr(cl, "EnumeratedItem", None) or []))
+        term = terms[0]
+
+        igd.Alias.append(DEF.Alias(Context="SDTM", Name="IG-ALIAS"))
+        idf.Alias.append(DEF.Alias(Context="SDTM", Name="IT-ALIAS"))
+        cl.Alias.append(DEF.Alias(Context="nci:ExtCodeID", Name="CL-ALIAS"))
+        term.Alias.append(DEF.Alias(Context="nci:ExtCodeID",
+                                    Name="TERM-ALIAS"))
+        idf.Origin = [DEF.Origin(
+            Type="Derived", Source="Sponsor",
+            Description=DEF.Description(TranslatedText=[
+                DEF.TranslatedText(_content="Derived per SAP", lang="en")]),
+            DocumentRef=[DEF.DocumentRef(leafID="LF.SAP")])]
+
+        flat = DefineFlattener(original).flatten_all()
+        self.assertIn("aliases", flat)
+        self.assertIn("origins", flat)
+        rebuilt = DefineBuilder(flat).build()
+        rmdv = rebuilt.Study.MetaDataVersion
+
+        r_igd = next(x for x in rmdv.ItemGroupDef if x.OID == igd.OID)
+        r_idf = next(x for x in rmdv.ItemDef if x.OID == idf.OID)
+        r_cl = next(x for x in rmdv.CodeList if x.OID == cl.OID)
+        r_terms = (list(getattr(r_cl, "CodeListItem", None) or [])
+                   + list(getattr(r_cl, "EnumeratedItem", None) or []))
+        r_term = next(t for t in r_terms
+                      if t.CodedValue == term.CodedValue)
+
+        self.assertEqual(r_igd.Alias[-1].Name, "IG-ALIAS")
+        self.assertEqual(r_idf.Alias[-1].Name, "IT-ALIAS")
+        self.assertEqual(r_cl.Alias[-1].Name, "CL-ALIAS")
+        self.assertEqual(r_term.Alias[-1].Name, "TERM-ALIAS")
+
+        o = r_idf.Origin[0]
+        self.assertEqual(o.Type, "Derived")
+        self.assertEqual(o.Source, "Sponsor")
+        self.assertEqual(o.Description.TranslatedText[0]._content,
+                         "Derived per SAP")
+        self.assertEqual(o.Description.TranslatedText[0].lang, "en")
+        self.assertEqual(o.DocumentRef[0].leafID, "LF.SAP")
 
     def test_roundtrip_adam(self):
         original = self._load_define("tests/data/definev21-adam.xml")

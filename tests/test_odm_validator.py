@@ -93,6 +93,46 @@ class TestODMv20Validator(TestCase):
         tree = parser.parse_tree()
         self.assertFalse(self.validator.validate_tree(tree))
 
+    def test_itemdef_displayformat_variableset_xsd_valid(self):
+        """ItemDef DisplayFormat/VariableSet serialize to schema-valid ODM 2.0.
+
+        v0.2.1 aligned the ODM 2.0 ItemDef attribute set with the XSD
+        (added DisplayFormat/VariableSet). This proves the alignment
+        end-to-end: take the known-valid odmv2_example.xml fixture, set
+        the two new attributes on an ItemDef, re-serialize, and re-validate
+        against the bundled ODM 2.0 XSD.
+        """
+        import tempfile
+        from odmlib import odm_loader as OL, loader as LO
+        import odmlib.ns_registry as NS
+
+        nsr = NS.NamespaceRegistry(
+            prefix="odm", uri="http://www.cdisc.org/ns/odm/v2.0",
+            is_default=True, is_reset=True,
+        )
+        NS.NamespaceRegistry(prefix="xs",    uri="http://www.w3.org/2001/XMLSchema-instance")
+        NS.NamespaceRegistry(prefix="xml",   uri="http://www.w3.org/XML/1998/namespace")
+        NS.NamespaceRegistry(prefix="xlink", uri="http://www.w3.org/1999/xlink")
+
+        loader = LO.ODMLoader(OL.XMLODMLoader(
+            model_package="odm_2_0",
+            ns_uri="http://www.cdisc.org/ns/odm/v2.0",
+            local_model=False,
+            nsr=nsr,
+        ))
+        loader.open_odm_document(self.example_file)
+        odm = loader.root()
+        mdv = loader.MetaDataVersion()
+        self.assertGreaterEqual(len(mdv.ItemDef), 1)
+
+        mdv.ItemDef[0].DisplayFormat = "9.2"
+        mdv.ItemDef[0].VariableSet = "VS1"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "odmv2_displayformat.xml")
+            odm.write_xml(out)
+            self.assertIsNone(self.validator.validate_file(out))
+
 
 class TestODMValidatorConstructorContract(TestCase):
     """Lock in the contract: silent fallback to ODM 1.3.2 is no longer allowed.

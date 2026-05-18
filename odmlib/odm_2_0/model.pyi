@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, List
+from typing import Any, List, Optional
 from odmlib.odm_element import ODMElement
 
 
@@ -179,16 +179,22 @@ class ItemDef(ODMElement):
     Name: Optional[str]
     DataType: Optional[str]
     Length: Optional[int]
-    FractionDigits: Optional[int]
-    DatasetVarName: Optional[str]
-    SDSVarName: Optional[str]
+    DisplayFormat: Optional[str]
+    VariableSet: Optional[str]
     CommentOID: Optional[str]
     Description: Optional[Description]
+    # The element classes below are defined in model.py but have no stub
+    # in this partial .pyi (13 of 97 classes are unstubbed); typed as Any
+    # to keep this block correct without expanding stub scope.
+    Definition: Optional[Any]
     Question: Optional[Question]
-    ExternalQuestion: Optional[ExternalQuestion]
-    MeasurementUnitRef: List[MeasurementUnitRef]
+    Prompt: Optional[Any]
+    CRFCompletionInstructions: Optional[Any]
+    ImplementationNotes: Optional[Any]
+    CDISCNotes: Optional[Any]
     RangeCheck: List[RangeCheck]
     CodeListRef: Optional[CodeListRef]
+    Coding: List[Any]
     Alias: List[Alias]
 
 

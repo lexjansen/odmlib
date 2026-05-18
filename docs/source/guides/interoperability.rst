@@ -109,12 +109,6 @@ Optionally pass a Define-XML MetaDataVersion to enrich column metadata
     # Convert with enriched metadata
     datasets = dataset_xml_to_dataset_json(odm, define_mdv=mdv)
 
-.. note::
-
-   The ``odmlib.dataset_json`` module (plain Python classes) is deprecated
-   in v0.2.0 and will be removed in v0.3.0.  See the
-   :doc:`CHANGELOG </changelog>` for migration guidance.
-
 ---
 
 Using Pandas with odmlib

@@ -162,29 +162,3 @@ Convert between DataFrames and Dataset-JSON (requires pandas):
     loader.open_odm_document('define.xml')
     dfs = define_metadata_to_dataframes(loader.root())
     print(dfs['variables'][['DatasetOID', 'Name', 'DataType']].head())
-
-Migration from Legacy Module
-------------------------------
-
-The legacy ``odmlib.dataset_json`` module is deprecated. Update imports:
-
-.. code-block:: python
-
-    # Before (deprecated):
-    from odmlib.dataset_json import DatasetJSON, Dataset, ItemMetadata
-    from odmlib.dataset_json.converter import dataset_xml_to_json
-
-    # After:
-    from odmlib.dataset_json_1_1 import DatasetJSON, Column, SourceSystem
-    from odmlib.dataset_json_1_1.converter import dataset_xml_to_dataset_json
-
-Key differences:
-
-- **One dataset per file** — ``DatasetJSON`` represents a single dataset,
-  not a wrapper for multiple datasets.
-- **ODMElement-based** — Full descriptor validation, ``find()``,
-  ``find_all()``, ``find_by()`` support.
-- **Spec-conformant field names** — ``columns`` (not ``items``),
-  ``itemOID`` (not ``OID``), ``dataType`` (not ``type``).
-- **NDJSON support** — ``write_ndjson()`` / ``read_ndjson()`` for
-  streaming use cases.

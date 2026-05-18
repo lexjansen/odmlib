@@ -7,3 +7,13 @@ venv/
 docs/build/
 odmlib/build/
 dist/
+
+# Claude Code (local)
+.claude/
+
+# Test / coverage artifacts
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/

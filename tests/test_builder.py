@@ -345,10 +345,14 @@ class TestODMBuilderRoundTrip(TestCase):
 
 
 class TestODMBuilderAlternatePackage(TestCase):
-    """Tests that ODMBuilder respects the model_package argument."""
+    """Tests that ODMBuilder builds full documents for model_package='odm_2_0'.
 
-    def test_odm_2_0_builder(self):
-        """ODMBuilder works with model_package='odm_2_0'."""
+    ODM 2.0 has a flatter Study (scalar StudyName/ProtocolName, no
+    GlobalVariables) and an object-valued MetaDataVersion.Description; the
+    builder must adapt to that shape automatically.
+    """
+
+    def _v2_namespaces(self):
         import odmlib.ns_registry as NS
         NS.NamespaceRegistry(
             prefix="odm", uri="http://www.cdisc.org/ns/odm/v2.0",
@@ -358,10 +362,256 @@ class TestODMBuilderAlternatePackage(TestCase):
         NS.NamespaceRegistry(prefix="xml",   uri="http://www.w3.org/XML/1998/namespace")
         NS.NamespaceRegistry(prefix="xlink", uri="http://www.w3.org/1999/xlink")
 
-        builder = ODMBuilder("odm_2_0")
-        builder.set_file(FileOID="F.V2", FileType="Snapshot",
+    def _build_v2(self):
+        return (ODMBuilder("odm_2_0")
+                .set_file(FileOID="F.V2", FileType="Snapshot",
+                          CreationDateTime="2024-01-01T00:00:00")
+                .add_study(OID="S.V2", study_name="V2 Study",
+                           study_description="ODM 2.0 round-trip test",
+                           protocol_name="P.V2")
+                .add_metadata_version(OID="MDV.V2", Name="Version 1")
+                .with_description("Metadata for the V2 study")
+                .add_item_group_def(OID="IG.DM", Name="Demographics",
+                                    Repeating="No", Type="Dataset")
+                .add_item_ref(ItemOID="IT.SUBJID", Mandatory="Yes",
+                              OrderNumber=1)
+                .add_item_def(OID="IT.SUBJID", Name="Subject ID",
+                              DataType="text")
+                .add_code_list(OID="CL.SEX", Name="Sex", DataType="text",
+                               items=[{"CodedValue": "M", "Decode": "Male"},
+                                      {"CodedValue": "F", "Decode": "Female"}])
+                .build())
+
+    def test_minimal_file_only(self):
+        """File-level build still works for odm_2_0 (no Study)."""
+        self._v2_namespaces()
+        odm = (ODMBuilder("odm_2_0")
+               .set_file(FileOID="F.V2", FileType="Snapshot",
                          CreationDateTime="2024-01-01T00:00:00")
-        # ODM v2 model doesn't have GlobalVariables in the same way, so just
-        # verify the builder constructs without errors at the ODM level
-        odm = builder.build()
+               .build())
         self.assertEqual(odm.FileOID, "F.V2")
+
+    def test_add_study_v2_shape(self):
+        """add_study() builds the flat ODM 2.0 Study (no GlobalVariables)."""
+        self._v2_namespaces()
+        odm = self._build_v2()
+        study = odm.Study[0]
+        self.assertEqual(study.OID, "S.V2")
+        self.assertEqual(study.StudyName, "V2 Study")
+        self.assertEqual(study.ProtocolName, "P.V2")
+        self.assertFalse(hasattr(study, "GlobalVariables")
+                         and study.GlobalVariables is not None)
+        # Study.Description is an object with TranslatedText in ODM 2.0
+        self.assertEqual(study.Description.TranslatedText[0]._content,
+                         "ODM 2.0 round-trip test")
+
+    def test_mdv_description_is_object(self):
+        """with_description() sets an object-valued MDV Description in v2.0."""
+        self._v2_namespaces()
+        odm = self._build_v2()
+        mdv = odm.Study[0].MetaDataVersion[0]
+        self.assertEqual(mdv.Description.TranslatedText[0]._content,
+                         "Metadata for the V2 study")
+
+    def test_full_document_structure(self):
+        """A full v2.0 metadata tree is constructed under the MDV."""
+        self._v2_namespaces()
+        mdv = self._build_v2().Study[0].MetaDataVersion[0]
+        self.assertEqual(mdv.ItemGroupDef[0].OID, "IG.DM")
+        self.assertEqual(mdv.ItemGroupDef[0].ItemRef[0].ItemOID, "IT.SUBJID")
+        self.assertEqual(mdv.ItemDef[0].OID, "IT.SUBJID")
+        self.assertEqual(mdv.CodeList[0].OID, "CL.SEX")
+        self.assertEqual(len(mdv.CodeList[0].CodeListItem), 2)
+
+    def test_v2_xml_round_trip(self):
+        """Builder-produced v2.0 document serialises to XML."""
+        self._v2_namespaces()
+        xml_elem = self._build_v2().to_xml()
+        self.assertIsNotNone(xml_elem)
+        self.assertEqual(xml_elem.tag[xml_elem.tag.find("}") + 1:], "ODM")
+
+    def test_v2_json_round_trip(self):
+        """Builder-produced v2.0 document serialises to JSON."""
+        import json
+        self._v2_namespaces()
+        d = json.loads(self._build_v2().to_json())
+        self.assertEqual(d["FileOID"], "F.V2")
+        self.assertEqual(d["Study"][0]["OID"], "S.V2")
+
+
+class TestODMBuilderPhase2(TestCase):
+    """Core ODM authoring elements: events/forms/methods/conditions/units."""
+
+    def _base(self):
+        return (ODMBuilder()
+                .set_file(FileOID="F.P2", FileType="Snapshot",
+                          CreationDateTime="2024-01-01T00:00:00")
+                .add_study(OID="S.P2", study_name="Phase2",
+                           study_description="desc", protocol_name="P.P2")
+                .add_metadata_version(OID="MDV.P2", Name="V1"))
+
+    def test_study_event_def_and_ref(self):
+        odm = (self._base()
+               .add_study_event_def(OID="SE.VISIT1", Name="Visit 1",
+                                    Repeating="No", Type="Scheduled")
+               .add_study_event_ref(StudyEventOID="SE.VISIT1",
+                                    Mandatory="Yes", OrderNumber=1)
+               .build())
+        mdv = odm.Study[0].MetaDataVersion[0]
+        self.assertEqual(mdv.StudyEventDef[0].OID, "SE.VISIT1")
+        self.assertIsNotNone(mdv.Protocol)
+        self.assertEqual(mdv.Protocol.StudyEventRef[0].StudyEventOID,
+                         "SE.VISIT1")
+
+    def test_form_def_ref_item_group_ref(self):
+        odm = (self._base()
+               .add_study_event_def(OID="SE.V1", Name="V1",
+                                    Repeating="No", Type="Scheduled")
+               .add_form_ref(FormOID="F.DM", Mandatory="Yes", OrderNumber=1)
+               .add_form_def(OID="F.DM", Name="Demographics Form",
+                             Repeating="No")
+               .add_item_group_ref(ItemGroupOID="IG.DM", Mandatory="Yes",
+                                   OrderNumber=1)
+               .build())
+        mdv = odm.Study[0].MetaDataVersion[0]
+        self.assertEqual(mdv.StudyEventDef[0].FormRef[0].FormOID, "F.DM")
+        self.assertEqual(mdv.FormDef[0].OID, "F.DM")
+        self.assertEqual(mdv.FormDef[0].ItemGroupRef[0].ItemGroupOID, "IG.DM")
+
+    def test_method_and_condition_def(self):
+        odm = (self._base()
+               .add_method_def(OID="MT.AGE", Name="Age Derivation",
+                               Type="Computation",
+                               description="Derive age from birth date",
+                               formal_expression="(today - dob).years",
+                               expression_context="Python")
+               .add_condition_def(OID="CD.MALE", Name="Is Male",
+                                  description="Subject is male",
+                                  formal_expression="SEX == 'M'")
+               .build())
+        mdv = odm.Study[0].MetaDataVersion[0]
+        md = mdv.MethodDef[0]
+        self.assertEqual(md.OID, "MT.AGE")
+        self.assertEqual(md.Description.TranslatedText[0]._content,
+                         "Derive age from birth date")
+        self.assertEqual(md.FormalExpression[0].Context, "Python")
+        cd = mdv.ConditionDef[0]
+        self.assertEqual(cd.OID, "CD.MALE")
+        self.assertEqual(cd.FormalExpression[0]._content, "SEX == 'M'")
+
+    def test_measurement_unit(self):
+        odm = (self._base()
+               .add_measurement_unit(OID="MU.KG", Name="Kilograms",
+                                     symbol="kg")
+               .build())
+        bd = odm.Study[0].BasicDefinitions
+        self.assertIsNotNone(bd)
+        self.assertEqual(bd.MeasurementUnit[0].OID, "MU.KG")
+        self.assertEqual(bd.MeasurementUnit[0].Symbol.TranslatedText[0]._content,
+                         "kg")
+
+    def test_item_def_enrichers(self):
+        odm = (self._base()
+               .add_item_group_def(OID="IG.DM", Name="DM", Repeating="No")
+               .add_item_def(OID="IT.AGE", Name="Age", DataType="integer")
+               .with_question("What is the age?")
+               .with_codelist_ref("CL.AGEGRP")
+               .with_measurement_unit_ref("MU.YR")
+               .with_range_check("GE", [0, 120], soft_hard="Hard")
+               .with_alias("SDTM", "AGE")
+               .build())
+        item = odm.Study[0].MetaDataVersion[0].ItemDef[0]
+        self.assertEqual(item.Question.TranslatedText[0]._content,
+                         "What is the age?")
+        self.assertEqual(item.CodeListRef.CodeListOID, "CL.AGEGRP")
+        self.assertEqual(item.MeasurementUnitRef[0].MeasurementUnitOID, "MU.YR")
+        self.assertEqual(item.RangeCheck[0].Comparator, "GE")
+        self.assertEqual([cv._content for cv in item.RangeCheck[0].CheckValue],
+                         ["0", "120"])
+        self.assertEqual(item.Alias[0].Name, "AGE")
+
+    def test_enricher_before_item_def_raises(self):
+        with self.assertRaises(RuntimeError):
+            self._base().with_question("Q?")
+
+    def test_v2_form_methods_guarded(self):
+        b = (ODMBuilder("odm_2_0")
+             .set_file(FileOID="F.V2", FileType="Snapshot",
+                       CreationDateTime="2024-01-01T00:00:00")
+             .add_study(OID="S.V2", study_name="S",
+                        study_description="D", protocol_name="P")
+             .add_metadata_version(OID="MDV.V2", Name="V1")
+             .add_study_event_def(OID="SE.V1", Name="V1",
+                                  Repeating="No", Type="Scheduled"))
+        with self.assertRaises(RuntimeError):
+            b.add_form_def(OID="F.X", Name="X", Repeating="No")
+        with self.assertRaises(RuntimeError):
+            b.add_form_ref(FormOID="F.X", Mandatory="Yes")
+
+    def test_v2_item_group_ref_routes_to_study_event(self):
+        odm = (ODMBuilder("odm_2_0")
+               .set_file(FileOID="F.V2", FileType="Snapshot",
+                         CreationDateTime="2024-01-01T00:00:00")
+               .add_study(OID="S.V2", study_name="S",
+                          study_description="D", protocol_name="P")
+               .add_metadata_version(OID="MDV.V2", Name="V1")
+               .add_study_event_def(OID="SE.V1", Name="V1",
+                                    Repeating="No", Type="Scheduled")
+               .add_item_group_ref(ItemGroupOID="IG.DM", Mandatory="Yes")
+               .build())
+        sed = odm.Study[0].MetaDataVersion[0].StudyEventDef[0]
+        self.assertEqual(sed.ItemGroupRef[0].ItemGroupOID, "IG.DM")
+
+
+class TestODMBuilderEscapeHatch(TestCase):
+    """attach()/attach_to_current() for elements without a dedicated method."""
+
+    def _base(self):
+        return (ODMBuilder()
+                .set_file(FileOID="F.EH", FileType="Snapshot",
+                          CreationDateTime="2024-01-01T00:00:00")
+                .add_study(OID="S.EH", study_name="EH",
+                           study_description="d", protocol_name="P.EH")
+                .add_metadata_version(OID="MDV.EH", Name="V1"))
+
+    def test_attach_to_current_routes_to_accepting_parent(self):
+        import odmlib.odm_1_3_2.model as M
+        # Presentation has no add_* method but is a valid MDV child.
+        b = self._base()
+        b.attach_to_current(M.Presentation(OID="PR.1", _content="bold"))
+        odm = b.build()
+        self.assertEqual(
+            odm.Study[0].MetaDataVersion[0].Presentation[0].OID, "PR.1")
+
+    def test_attach_explicit_parent_via_current(self):
+        import odmlib.odm_1_3_2.model as M
+        b = (self._base()
+             .add_item_group_def(OID="IG.DM", Name="DM", Repeating="No"))
+        b.attach(b.current["item_group_def"],
+                 M.Alias(Context="SDTM", Name="DM"))
+        odm = b.build()
+        igd = odm.Study[0].MetaDataVersion[0].ItemGroupDef[0]
+        self.assertEqual(igd.Alias[0].Name, "DM")
+
+    def test_attach_non_odmelement_raises(self):
+        b = self._base()
+        with self.assertRaises(TypeError):
+            b.attach_to_current({"not": "an element"})
+
+    def test_attach_to_incompatible_parent_raises(self):
+        import odmlib.odm_1_3_2.model as M
+        b = (self._base()
+             .add_item_group_def(OID="IG.DM", Name="DM", Repeating="No")
+             .add_item_def(OID="IT.X", Name="X", DataType="text"))
+        # ItemDef cannot hold a CodeList; explicit attach must reject it.
+        with self.assertRaises(TypeError):
+            b.attach(b.current["item_def"],
+                     M.CodeList(OID="CL.1", Name="C", DataType="text"))
+
+    def test_current_property_keys(self):
+        b = self._base().add_item_group_def(OID="IG.DM", Name="DM",
+                                            Repeating="No")
+        cur = b.current
+        self.assertEqual(cur["mdv"].OID, "MDV.EH")
+        self.assertEqual(cur["item_group_def"].OID, "IG.DM")
+        self.assertIsNone(cur["item_def"])

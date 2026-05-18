@@ -4,6 +4,25 @@ from pathlib import Path
 from odmlib.exceptions import OdmlibValidationError
 
 
+class _UnknownAttribute:
+    """Sentinel returned by :meth:`ValueSet.value_set` when an attribute key
+    is absent from the resolved version *and* every fallback version.
+
+    Distinct from an unknown *version*, which still raises
+    ``OdmlibValidationError``. Returning a sentinel (rather than raising)
+    lets ``validate()`` report ``False`` so the ``SKIP_VALUESET`` permissive
+    guard in ``ValidValues.__set__`` can take effect for unregistered keys.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self):
+        return "<ValueSet.UNKNOWN_ATTRIBUTE>"
+
+
+UNKNOWN_ATTRIBUTE = _UnknownAttribute()
+
+
 class ValueSetLoader:
     """Loads and caches valueset data from JSON file"""
     _cache = None  # Class variable for singleton cache
@@ -91,6 +110,10 @@ class ValueSet:
       (e.g., ``{"_regex": "^2\\\\.[01](\\\\.\\\\d+)?$", "_description": "..."}``).
     """
 
+    #: Sentinel returned by :meth:`value_set` for an unknown attribute key
+    #: (see :class:`_UnknownAttribute`). Exposed for callers/tests.
+    UNKNOWN_ATTRIBUTE = UNKNOWN_ATTRIBUTE
+
     _compiled_regex_cache = {}  # (version, attribute) -> compiled re.Pattern
 
     # Versions tried (in order) when an attribute is missing from the resolved
@@ -125,11 +148,15 @@ class ValueSet:
             instance: ODMElement instance for automatic version detection - optional
 
         Returns:
-            list or dict: A list of valid values, or a dict with ``_regex`` key
-            for pattern-based validation.
+            list or dict: A list of valid values, or a dict with ``_regex``
+            key for pattern-based validation. Returns the
+            :data:`UNKNOWN_ATTRIBUTE` sentinel if the attribute key is not
+            registered for the resolved version or any fallback version.
 
         Raises:
-            OdmlibValidationError: If attribute or version not found in valueset
+            OdmlibValidationError: If the *version* is not found in the
+            valueset. An unknown *attribute* no longer raises — it returns
+            the :data:`UNKNOWN_ATTRIBUTE` sentinel instead.
         """
         version = cls._resolve_version(version, instance)
 
@@ -159,10 +186,11 @@ class ValueSet:
             if other_valueset is not None and attribute in other_valueset:
                 return other_valueset[attribute]
 
-        raise OdmlibValidationError(
-            f"Unknown value {attribute} in ValueSet for version {version}. Unable to check value.",
-            hint=f"Attribute '{attribute}' is not defined in the value set for {version}",
-        )
+        # Unknown *attribute* (absent here and in every fallback version):
+        # return a sentinel rather than raising, so validate() can report
+        # False and the SKIP_VALUESET permissive guard can take effect.
+        # (Unknown *version* still raises, above.)
+        return UNKNOWN_ATTRIBUTE
 
     @classmethod
     def validate(cls, attribute, value, version=None, instance=None):
@@ -180,6 +208,13 @@ class ValueSet:
         """
         version = cls._resolve_version(version, instance)
         entry = cls.value_set(attribute, version=version)
+
+        if entry is UNKNOWN_ATTRIBUTE:
+            # No registered value set for this attribute: not provably
+            # valid -> False. This lets ValidValues.__set__ reach the
+            # SKIP_VALUESET permissive guard instead of the old raise
+            # propagating out of value_set().
+            return False
 
         if isinstance(entry, list):
             return value in entry
@@ -209,6 +244,9 @@ class ValueSet:
         """
         version = cls._resolve_version(version, instance)
         entry = cls.value_set(attribute, version=version)
+
+        if entry is UNKNOWN_ATTRIBUTE:
+            return f"No registered value set for {attribute}"
 
         if isinstance(entry, list):
             return f"Value must be one of: {', '.join(entry)}"

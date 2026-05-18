@@ -382,7 +382,8 @@ class TestDefineFlattenerProgrammatic(unittest.TestCase):
     def test_flatten_all_returns_all_tables(self):
         self.assertEqual(
             set(self.datasets.keys()),
-            set(DefineFlattener.TABLE_NAMES),
+            set(DefineFlattener.TABLE_NAMES)
+            | set(DefineFlattener.EXTRA_TABLE_NAMES),
         )
 
     def test_flatten_all_returns_dataset_json_instances(self):
@@ -678,7 +679,8 @@ class TestDefineFlattenerSDTM(unittest.TestCase):
     def test_flatten_all_keys(self):
         self.assertEqual(
             set(self.datasets.keys()),
-            set(DefineFlattener.TABLE_NAMES),
+            set(DefineFlattener.TABLE_NAMES)
+            | set(DefineFlattener.EXTRA_TABLE_NAMES),
         )
 
     # ---- study ----
@@ -938,7 +940,8 @@ class TestDefineFlattenerWriteAll(unittest.TestCase):
 
     def test_write_all_creates_files(self):
         paths = self.flattener.write_all(self.tmpdir)
-        self.assertEqual(len(paths), 11)
+        self.assertEqual(len(paths), len(DefineFlattener.TABLE_NAMES)
+                         + len(DefineFlattener.EXTRA_TABLE_NAMES))
         for path in paths:
             self.assertTrue(os.path.exists(path))
 
@@ -964,7 +967,8 @@ class TestDefineFlattenerWriteAll(unittest.TestCase):
         new_dir = os.path.join(self.tmpdir, "subdir", "nested")
         paths = self.flattener.write_all(new_dir)
         self.assertTrue(os.path.isdir(new_dir))
-        self.assertEqual(len(paths), 11)
+        self.assertEqual(len(paths), len(DefineFlattener.TABLE_NAMES)
+                         + len(DefineFlattener.EXTRA_TABLE_NAMES))
 
 
 class TestDefineFlattenerItemGroupOID(unittest.TestCase):

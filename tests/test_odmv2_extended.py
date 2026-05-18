@@ -183,7 +183,7 @@ class TestODMv2ItemDef(TestCase):
         self.assertEqual(item.DataType, "integer")
 
     def test_create_with_description(self):
-        tt   = ODM2.TranslatedText(_content="Subject Age", lang="en")
+        tt   = ODM2.TranslatedText(_content="Subject Age", lang="en", Type="text/plain")
         desc = ODM2.Description(TranslatedText=[tt])
         item = ODM2.ItemDef(OID="IT.AGE", Name="Age", DataType="integer", Description=desc)
         self.assertEqual(item.Description.TranslatedText[0]._content, "Subject Age")
@@ -200,6 +200,25 @@ class TestODMv2ItemDef(TestCase):
         data = json.loads(item.to_json())
         self.assertEqual(data["OID"], "IT.SEX")
         self.assertEqual(data["DataType"], "text")
+
+    def test_display_format_variable_set_round_trip(self):
+        """DisplayFormat/VariableSet (v0.2.1 XSD alignment) round-trip."""
+        item = ODM2.ItemDef(OID="IT.BMI", Name="BMI", DataType="float",
+                            Length=6, DisplayFormat="9.2", VariableSet="VS1")
+        self.assertEqual(item.DisplayFormat, "9.2")
+        self.assertEqual(item.VariableSet, "VS1")
+
+        elem = item.to_xml()
+        self.assertEqual(elem.attrib["DisplayFormat"], "9.2")
+        self.assertEqual(elem.attrib["VariableSet"], "VS1")
+
+        data = json.loads(item.to_json())
+        self.assertEqual(data["DisplayFormat"], "9.2")
+        self.assertEqual(data["VariableSet"], "VS1")
+
+        d = item.to_dict()
+        self.assertEqual(d["DisplayFormat"], "9.2")
+        self.assertEqual(d["VariableSet"], "VS1")
 
 
 # ---------------------------------------------------------------------------

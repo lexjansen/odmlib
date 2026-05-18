@@ -20,22 +20,23 @@ documents and extensions including Define-XML, Dataset-XML, and CT-XML.
 | CT-XML 1.1.1 | `odmlib.ct_1_1_1` | Stable |
 | ARM 1.0 | `odmlib.arm_1_0` | Stable |
 | Dataset-JSON v1.1 | `odmlib.dataset_json_1_1` | Stable |
-| Dataset-JSON (legacy) | `odmlib.dataset_json` | Deprecated |
 
 ## Features
 
-- **Object-oriented interface** — work with ODM elements as Python objects
-- **Type-validated attributes** — all assignments validated at assignment time
-- **Bidirectional serialization** — convert between XML, JSON, and Python dicts
-- **Validation** — OID uniqueness, ref/def integrity, Cerberus conformance, element ordering
-- **Dynamic OID checking** — automatic ref/def mapping via model introspection
-- **Extensible** — create custom extensions by subclassing model classes
-- **Builder API** — fluent `ODMBuilder` for programmatic document construction
-- **Context managers** — `open_odm()` and `open_define()` for safe file handling
-- **Dataset-JSON v1.1** — create, read, write, and convert CDISC Dataset-JSON documents
-- **Define-XML roundtrip** — flatten Define-XML to tabular Dataset-JSON and rebuild via `DefineFlattener`/`DefineBuilder`
-- **Permissive loading** — load non-conformant files for inspection and repair with graduated validation control
-- **Pandas integration** — export metadata/data to DataFrames; import DataFrame rows as ODM objects (optional, `pip install odmlib[dataframe]`)
+- **Object-oriented interface**: work with ODM elements as Python objects
+- **Type-validated attributes**: all assignments validated at assignment time
+- **Bidirectional serialization**: convert between XML, JSON, and Python dicts
+- **Validation**: OID uniqueness, ref/def integrity, Cerberus conformance, element ordering
+- **Dynamic OID checking**: automatic ref/def mapping via model introspection
+- **Extensible**: create custom extensions by subclassing model classes
+- **Builder API**: fluent `ODMBuilder` for programmatic document construction
+- **Context managers**: `open_odm()` and `open_define()` for safe file handling
+- **Dataset-JSON v1.1**: create, read, write, and convert CDISC Dataset-JSON documents
+- **Define-XML roundtrip**: flatten Define-XML to tabular Dataset-JSON and rebuild via `DefineFlattener`/`DefineBuilder`
+- **Permissive loading**: load non-conformant files for inspection and repair with graduated validation control
+- **Pandas integration**: export metadata/data to DataFrames; import DataFrame rows as ODM objects (optional, `pip install odmlib[dataframe]`)
+
+See ROADMAP.md for the path to v1.0
 
 ## Installation
 
@@ -498,7 +499,16 @@ python -m pytest tests/test_odm_loader.py -v
 - No `ItemData[Type]` support (typed item data elements, deprecated in ODM v2.0)
 - No `ds:Signature` support (digital signatures)
 - Single `MetaDataVersion` per load by default (use `idx` parameter for others)
-- ODM v2.0 implementation is still draft
+- ODM v2.0 implementation is still draft. The v0.2.0 model is aligned with the
+  ODM 2.0 XSD for the core CRF/dataset metadata subset, but five structural
+  features are **deferred to v0.2.1** and produce schema-invalid output if
+  used (see ROADMAP "v0.2.1 — ODM v2.0 Model/XSD Alignment" and
+  `ODM20-MODEL-XSD-DIFFERENCES_PLAN.md`):
+  - `ConditionDef` (missing required `MethodSignature`) — `ODMBuilder.add_condition_def()` unsafe for ODM 2.0
+  - text-based `FormalExpression` (XSD is element-based `Code | ExternalCodeLib`)
+  - `Protocol.StudyEventRef` (removed in the ODM 2.0 schema) — `add_study_event_ref()` unsafe for ODM 2.0
+  - `MetaDataVersion.StudyTiming` placement (XSD: `Protocol/StudyTimings`)
+  - `StudyEventGroupDef` (missing required `StudyEventGroupRef?/StudyEventRef?` group)
 
 ## License
 

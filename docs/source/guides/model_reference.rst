@@ -80,6 +80,40 @@ ODM 2.0 uses a flatter structure and adds workflow support:
 - Timing elements: :class:`~odmlib.odm_2_0.model.AbsoluteTimingConstraint`,
   :class:`~odmlib.odm_2_0.model.RelativeTimingConstraint`, etc.
 
+ODM 2.0 Known Limitations
+-------------------------
+
+The ODM 2.0 model is a draft. v0.2.0 aligned it with the ODM 2.0 XSD for the
+core CRF/dataset metadata subset (``TranslatedText/@Type`` is now required
+with a builder default, duplicate ``Arm``/``CheckValue`` removed, 12 missing
+value-set keys added, permissive mode can bypass an unregistered value set).
+Five **structural** features remain deferred to v0.2.1 and produce
+schema-invalid output if used under ``model_package="odm_2_0"``:
+
+- :class:`~odmlib.odm_2_0.model.ConditionDef` lacks the XSD-required
+  ``MethodSignature`` child (and required ``Description``) --
+  :meth:`~odmlib.builder.ODMBuilder.add_condition_def` is unsafe for ODM 2.0.
+- :class:`~odmlib.odm_2_0.model.FormalExpression` is text-based; the XSD is
+  element-based (``Code | ExternalCodeLib``) -- do not pass
+  ``formal_expression`` to :meth:`~odmlib.builder.ODMBuilder.add_method_def`
+  for ODM 2.0.
+- :class:`~odmlib.odm_2_0.model.Protocol` carries ``StudyEventRef``, removed
+  in the ODM 2.0 schema -- :meth:`~odmlib.builder.ODMBuilder.add_study_event_ref`
+  is unsafe for ODM 2.0.
+- ``MetaDataVersion.StudyTiming`` placement (the XSD puts timing under
+  ``Protocol/StudyTimings``).
+- :class:`~odmlib.odm_2_0.model.StudyEventGroupDef` cannot satisfy its
+  required ``(StudyEventGroupRef?, StudyEventRef?)`` child group.
+
+The :class:`~odmlib.odm_2_0.model.ItemDef` attribute-set alignment (drop
+``FractionDigits`` / ``DatasetVarName`` / ``SDSVarName``, add
+``DisplayFormat`` / ``VariableSet``) landed in v0.2.1; its XSD
+``ItemDef/ValueListRef`` child element remains deferred.
+
+See the ROADMAP "v0.2.1 -- ODM v2.0 Model/XSD Alignment" section and
+``ODM20-MODEL-XSD-DIFFERENCES_PLAN.md`` for full detail and the schema-valid
+safe-subset workaround.
+
 Define-XML Extensions
 ---------------------
 

@@ -278,7 +278,10 @@ class TestDefineMetadataToDataFrames(unittest.TestCase):
         from odmlib.dataframe import define_metadata_to_dataframes
         from odmlib.dataset_json_1_1.define_flattener import DefineFlattener
         dfs = define_metadata_to_dataframes(self.odm)
-        self.assertEqual(set(dfs.keys()), set(DefineFlattener.TABLE_NAMES))
+        self.assertEqual(
+            set(dfs.keys()),
+            set(DefineFlattener.TABLE_NAMES)
+            | set(DefineFlattener.EXTRA_TABLE_NAMES))
 
     def test_study_dataframe(self):
         from odmlib.dataframe import define_metadata_to_dataframes
@@ -379,7 +382,10 @@ class TestDefineMetadataToDataFramesSDTM(unittest.TestCase):
         from odmlib.dataframe import define_metadata_to_dataframes
         from odmlib.dataset_json_1_1.define_flattener import DefineFlattener
         dfs = define_metadata_to_dataframes(self.odm)
-        self.assertEqual(set(dfs.keys()), set(DefineFlattener.TABLE_NAMES))
+        self.assertEqual(
+            set(dfs.keys()),
+            set(DefineFlattener.TABLE_NAMES)
+            | set(DefineFlattener.EXTRA_TABLE_NAMES))
 
     def test_datasets_count(self):
         from odmlib.dataframe import define_metadata_to_dataframes
@@ -574,34 +580,6 @@ class TestDataFrameToDatasetJSON(unittest.TestCase):
         self.assertEqual(parsed["name"], "DM")
         self.assertEqual(parsed["rows"][0][0], "CDISC01")
         self.assertEqual(parsed["rows"][0][1], 65)
-
-
-# ---------------------------------------------------------------------------
-# Legacy model backward compatibility
-# ---------------------------------------------------------------------------
-
-@unittest.skipUnless(HAS_PANDAS, "pandas not installed")
-class TestLegacyDatasetJSONBackwardCompat(unittest.TestCase):
-    """Verify the old Dataset model still works with dataset_json_to_dataframe."""
-
-    def _make_legacy_dataset(self):
-        from odmlib.dataset_json.model import Dataset, ItemMetadata, DatasetRecord
-        items = [
-            ItemMetadata(OID="IT.A", name="A", label="Var A", type="string"),
-            ItemMetadata(OID="IT.B", name="B", label="Var B", type="integer"),
-        ]
-        ds = Dataset(name="DM", label="Demographics", items=items)
-        ds.records.append(DatasetRecord(["val1", 1]))
-        ds.records.append(DatasetRecord(["val2", 2]))
-        return ds
-
-    def test_legacy_still_works(self):
-        from odmlib.dataframe import dataset_json_to_dataframe
-        ds = self._make_legacy_dataset()
-        df = dataset_json_to_dataframe(ds)
-        self.assertEqual(list(df.columns), ["A", "B"])
-        self.assertEqual(len(df), 2)
-        self.assertEqual(df.iloc[0]["A"], "val1")
 
 
 if __name__ == "__main__":

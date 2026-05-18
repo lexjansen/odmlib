@@ -13,12 +13,14 @@ class TranslatedText(OE.ODMElement):
 
     Attributes:
         lang (str): BCP 47 language tag (xml:lang attribute), e.g. "en".
-        Type (str): Optional type qualifier for the text.
+        Type (str, required): Media-type qualifier for the text (XSD type
+            ``text``, free-text, ``use="required"``), e.g. ``"text/plain"``.
+            Required by the ODM 2.0 schema.
         _content (str, required): The actual text content.
     """
 
     lang = T.String(namespace="xml")
-    Type = T.String()
+    Type = T.String(required=True)
     _content = T.String(required=True)
 
 
@@ -156,6 +158,16 @@ class WorkflowRef(OE.ODMElement):
 
 
 class Arm(OE.ODMElement):
+    """Defines a study arm (treatment arm) in the trial design.
+
+    Attributes:
+        OID (str, required): Unique identifier.
+        Name (str, required): Human-readable name of the arm.
+        Description: Optional description.
+        WorkflowRef: Reference to the workflow that defines this arm's event
+            sequence.
+    """
+
     OID = T.OID(required=True)
     Name = T.Name(required=True)
     Description = T.ODMObject(element_class=Description)
@@ -251,12 +263,12 @@ class StudyEventDef(OE.ODMElement):
     Alias = T.ODMListObject(element_class=Alias)
 
     def __len__(self):
-        """ returns the number of FormRefs in an StudyEventDef object as the length """
+        """ returns the number of ItemGroupRefs in an StudyEventDef object as the length """
         return len(self.ItemGroupRef)
 
     def __getitem__(self, position):
         """
-        creates an iterator from an StudyEventDef object that returns the FormRef in position
+        creates an iterator from an StudyEventDef object that returns the ItemGroupRef in position
         """
         return self.ItemGroupRef[position]
 
@@ -343,6 +355,12 @@ class WhereClauseRef(OE.ODMElement):
 
 
 class CheckValue(OE.ODMElement):
+    """A single value used in a RangeCheck comparison.
+
+    Attributes:
+        _content (str, required): The check value as a string.
+    """
+
     _content = T.String(required=True)
 
 
@@ -504,15 +522,6 @@ class Prompt(OE.ODMElement):
 class CRFCompletionInstructions(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
 
-class CheckValue(OE.ODMElement):
-    """A single value used in a RangeCheck comparison.
-
-    Attributes:
-        _content (str, required): The check value as a string.
-    """
-
-    _content = T.String(required=True)
-
 
 class ImplementationNotes(OE.ODMElement):
     TranslatedText = T.ODMListObject(required=True, element_class=TranslatedText)
@@ -545,9 +554,8 @@ class ItemDef(OE.ODMElement):
     Name = T.Name(required=True)
     DataType = T.ValueSetString(required=True)
     Length = T.PositiveInteger()
-    FractionDigits = T.NonNegativeInteger()
-    DatasetVarName = T.Name()
-    SDSVarName = T.SASName()
+    DisplayFormat = T.String()
+    VariableSet = T.String()
     CommentOID = T.OIDRef(required=False)
     Description = T.ODMObject(element_class=Description)
     Definition = T.ODMObject(element_class=Definition)
@@ -746,23 +754,6 @@ class ExceptionEvent(OE.ODMElement):
     WorkflowRef = T.ODMObject(element_class=WorkflowRef)
     StudyEventGroupRef = T.ODMListObject(element_class=StudyEventGroupRef)
     StudyEventRef = T.ODMListObject(element_class=StudyEventRef)
-
-
-class Arm(OE.ODMElement):
-    """Defines a study arm (treatment arm) in the trial design.
-
-    Attributes:
-        OID (str, required): Unique identifier.
-        Name (str, required): Human-readable name of the arm.
-        Description: Optional description.
-        WorkflowRef: Reference to the workflow that defines this arm's event
-            sequence.
-    """
-
-    OID = T.OID(required=True)
-    Name = T.Name(required=True)
-    Description = T.ODMObject(element_class=Description)
-    WorkflowRef = T.ODMObject(element_class=WorkflowRef)
 
 
 class WorkflowStart(OE.ODMElement):

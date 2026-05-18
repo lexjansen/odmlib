@@ -8,9 +8,12 @@ tabular format suitable for analysis and round-tripping.
 Classes:
     :class:`DefineFlattener` -- converts Define-XML v2.1 to Dataset-JSON tables
 
-Target datasets (11 total):
+Target datasets (11 core):
     study, standards, datasets, variables, value_level, where_clauses,
     methods, comments, documents, codelists, codelist_terms
+
+Additional datasets (lossless-roundtrip extensions, optional on read):
+    aliases, origins
 """
 from __future__ import annotations
 
@@ -115,6 +118,9 @@ class DefineFlattener:
         "codelists", "codelist_terms",
     ]
 
+    # Lossless-roundtrip extension datasets (optional when reading back)
+    EXTRA_TABLE_NAMES = ["aliases", "origins"]
+
     def __init__(self, odm_root: Any, study_idx: int = 0):
         self._odm = odm_root
         self._study = odm_root.Study
@@ -179,6 +185,8 @@ class DefineFlattener:
             "documents": self.flatten_documents(),
             "codelists": self.flatten_codelists(),
             "codelist_terms": self.flatten_codelist_terms(),
+            "aliases": self.flatten_aliases(),
+            "origins": self.flatten_origins(),
         }
 
     def write_all(self, output_dir: str, indent: int = 2) -> list:
@@ -775,3 +783,101 @@ class DefineFlattener:
 
         return self._make_dataset("codelist_terms",
                                   "CodeList Terms", columns, rows)
+
+    def flatten_aliases(self) -> DatasetJSON:
+        """Flatten Alias elements from every element type that carries them.
+
+        Normalized one-row-per-Alias table keyed by the owning element.
+        Covers ItemGroupDef, ItemDef, CodeList, and the CodeListItem /
+        EnumeratedItem terms (which the codelist_terms table cannot hold
+        an Alias for).  ``Member`` disambiguates a codelist term by its
+        CodedValue; it is empty for the OID-addressable element types.
+
+        Returns:
+            DatasetJSON: One row per Alias.
+        """
+        columns = [
+            _make_column("DEFINE.AL.PARENTTYPE", "ParentType",
+                         "Parent Element Type", key_seq=1),
+            _make_column("DEFINE.AL.PARENTOID", "ParentOID",
+                         "Parent OID", key_seq=2),
+            _make_column("DEFINE.AL.MEMBER", "Member",
+                         "CodeList Term Coded Value", key_seq=3),
+            _make_column("DEFINE.AL.CONTEXT", "Context", "Context"),
+            _make_column("DEFINE.AL.NAME", "Name", "Name"),
+        ]
+
+        rows = []
+
+        def _emit(parent_type, parent_oid, member, element):
+            for alias in getattr(element, "Alias", None) or []:
+                rows.append([
+                    parent_type, parent_oid, member,
+                    _safe_get(alias, "Context"),
+                    _safe_get(alias, "Name"),
+                ])
+
+        for igd in getattr(self._mdv, "ItemGroupDef", None) or []:
+            _emit("ItemGroupDef", igd.OID, None, igd)
+        for idf in getattr(self._mdv, "ItemDef", None) or []:
+            _emit("ItemDef", idf.OID, None, idf)
+        for cl in getattr(self._mdv, "CodeList", None) or []:
+            _emit("CodeList", cl.OID, None, cl)
+            for cli in getattr(cl, "CodeListItem", None) or []:
+                _emit("CodeListItem", cl.OID,
+                      _safe_get(cli, "CodedValue"), cli)
+            for ei in getattr(cl, "EnumeratedItem", None) or []:
+                _emit("EnumeratedItem", cl.OID,
+                      _safe_get(ei, "CodedValue"), ei)
+
+        return self._make_dataset("aliases", "Alias Definitions",
+                                  columns, rows)
+
+    def flatten_origins(self) -> DatasetJSON:
+        """Flatten the full ItemDef Origin trees (one row per Origin).
+
+        The inline OriginType / OriginSource columns on the variables and
+        value_level tables only capture the first Origin's Type and Source.
+        This table captures every Origin with its Description (text and
+        language) and DocumentRef leafIDs, enabling lossless rebuild.
+
+        Returns:
+            DatasetJSON: One row per Origin within each ItemDef.
+        """
+        columns = [
+            _make_column("DEFINE.OR.ITEMOID", "ItemOID", "Item OID",
+                         key_seq=1),
+            _make_column("DEFINE.OR.ORDERNUMBER", "OrderNumber",
+                         "Origin Order", "integer", key_seq=2),
+            _make_column("DEFINE.OR.TYPE", "Type", "Origin Type"),
+            _make_column("DEFINE.OR.SOURCE", "Source", "Origin Source"),
+            _make_column("DEFINE.OR.DESCRIPTIONTEXT", "DescriptionText",
+                         "Description"),
+            _make_column("DEFINE.OR.DESCRIPTIONLANG", "DescriptionLang",
+                         "Description Language"),
+            _make_column("DEFINE.OR.DOCUMENTREFLEAFIDS", "DocumentRefLeafIDs",
+                         "Document Ref Leaf IDs"),
+        ]
+
+        rows = []
+        for idf in getattr(self._mdv, "ItemDef", None) or []:
+            for i, origin in enumerate(getattr(idf, "Origin", None) or []):
+                leaf_ids = [
+                    _safe_get(dr, "leafID")
+                    for dr in getattr(origin, "DocumentRef", None) or []
+                    if _safe_get(dr, "leafID") is not None
+                ]
+                rows.append([
+                    idf.OID,
+                    i + 1,
+                    _safe_get(origin, "Type"),
+                    _safe_get(origin, "Source"),
+                    _safe_get(origin, "Description", "TranslatedText", 0,
+                              "_content"),
+                    _safe_get(origin, "Description", "TranslatedText", 0,
+                              "lang"),
+                    ", ".join(leaf_ids) if leaf_ids else None,
+                ])
+
+        return self._make_dataset("origins", "Origin Definitions",
+                                  columns, rows)

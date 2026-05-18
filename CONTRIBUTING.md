@@ -7,9 +7,7 @@ Thank you for your interest in contributing to **odmlib**.
 odmlib is an open-source library focused on working with ODM and Define-XML in the context of CDISC standards. 
 Contributions are welcome from both **software developers** and **domain experts**.
 
-Because odmlib operates in a standards-driven and regulated space:
-
-> **Correctness and standards alignment are more important than speed or volume of contributions.**
+Because odmlib operates in a standards-driven and regulated space correctness and standards alignment are important.
 
 ---
 
@@ -35,7 +33,7 @@ We recognize and encourage multiple types of contributions:
 
 * README improvements
 * Tutorials and examples
-* Clarifications of workflows (especially CDISC-related)
+* Clarifications of workflows
 
 ### 🐛 Bug Reports
 
@@ -121,47 +119,24 @@ The following typically do **not** qualify for inclusion in `CONTRIBUTORS.md`:
 * Include tests for new functionality
 * Update documentation where needed
 * Write clear commit messages
-
----
-
-### For Domain-Sensitive Changes
-
-Changes involving:
-
-* Define-XML generation
-* ODM modeling
-* CDISC interpretation
-
-**must include:**
-
-* Clear explanation of the approach
-* References to relevant specifications (if applicable)
-* Example inputs/outputs where possible
+* Test data files appreciated
 
 ---
 
 ## Review Process
 
-odmlib uses a governance model with three key roles:
+odmlib uses a governance model with two key roles:
 
 * Maintainers
 * Reviewers
-* Domain Stewards
 
-### Non-Domain Changes
+### Minor Changes
 
 * Require approval from at least one Reviewer
 
-### Domain-Sensitive Changes
-
-* Require:
-
-  * At least one Reviewer
-  * At least one Domain Steward
-
 ### Major Changes
 
-* Require discussion and alignment with Maintainers and Domain Stewards
+* Require discussion and alignment with Maintainers
 
 ---
 
@@ -218,15 +193,12 @@ Contributors may take on larger roles over time:
 
 * Consistent, high-quality contributions
 * Strong understanding of the codebase
-
-### Domain Steward
-
-* Demonstrated CDISC expertise
-* Trusted input on standards-related topics
+* CDISC standards knowledge
 
 ### Maintainer
 
 * Sustained leadership and high-impact contributions
+* CDISC standards expertise
 
 ---
 
@@ -237,6 +209,7 @@ odmlib aims to be:
 * Technically robust
 * Standards-compliant
 * Useful in real-world clinical workflows
+* Trusted library for AI generated code
 
 Your contributions—whether code, domain expertise, or validation—are essential to achieving that goal.
 

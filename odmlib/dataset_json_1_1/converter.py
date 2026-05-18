@@ -1,10 +1,9 @@
 """Converters between Dataset-XML 1.0.1 and Dataset-JSON v1.1.
 
 Provides utilities to convert between odmlib Dataset-XML objects and
-the new ODMElement-based Dataset-JSON v1.1 model. Unlike the legacy
-converter in ``odmlib.dataset_json.converter``, this module produces
-**one DatasetJSON per ItemGroupOID** (one dataset per file), matching
-the Dataset-JSON v1.1 specification.
+the ODMElement-based Dataset-JSON v1.1 model. Produces **one
+DatasetJSON per ItemGroupOID** (one dataset per file), matching the
+Dataset-JSON v1.1 specification.
 
 Functions:
     :func:`dataset_xml_to_dataset_json` -- Dataset-XML → dict of DatasetJSON

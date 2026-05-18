@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     {name = "Sam Hume", email = "swhume@gmail.com"},
 ]
-keywords = ["CDISC", "ODM", "Define-XML", "Dataset-XML", "clinical data"]
+keywords = ["CDISC", "ODM", "Define-XML", "Dataset-JSON", "clinical data"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Healthcare Industry",
@@ -34,15 +34,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pytest>=7.0",
-    "pytest-cov>=4.0",
-    "hypothesis>=6.0",
-    "sphinx>=5.0",
-    "sphinx-rtd-theme>=1.0",
-    "mypy>=1.0",
-    "pandas>=1.5",
-]
 dataframe = [
     "pandas>=1.5",
 ]
@@ -54,7 +45,10 @@ test = [
 docs = [
     "sphinx>=5.0",
     "sphinx-rtd-theme>=1.0",
-    "sphinx-autodoc-typehints>=1.0",
+]
+dev = [
+    "odmlib[test,docs,dataframe]",
+    "mypy>=1.0",
 ]
 
 [project.urls]

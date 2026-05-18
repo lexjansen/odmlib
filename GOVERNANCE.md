@@ -18,16 +18,13 @@ over speed**.
 1. **Correctness over velocity**
    Changes must align with CDISC standards and real-world usage.
 
-2. **Domain expertise is first-class**
-   Contributions from clinical and standards experts are as important as code.
-
-3. **Open participation, trusted review**
+2. **Open participation, trusted review**
    Anyone can contribute; trusted roles ensure quality and consistency.
 
-4. **Transparency in decision-making**
+3. **Transparency in decision-making**
    Discussions and decisions should be visible and documented when possible.
 
-5. **Usefulness for real use cases**
+4. **Usefulness for real use cases**
    Projects should be useful in real-world scenarios.
    Project goals should be clear and achievable.
 
@@ -75,33 +72,6 @@ Reviewers are trusted contributors who ensure code quality and consistency.
 
 ---
 
-### Domain Stewards
-
-Domain Stewards are experts in CDISC, Define-XML, and clinical metadata standards.
-
-**Responsibilities:**
-
-* Review changes affecting:
-
-  * Define-XML generation
-  * ODM modeling
-  * Standards compliance
-* Validate correctness against:
-
-  * CDISC specifications
-  * Real-world submission practices
-* Provide authoritative interpretation where specifications are ambiguous
-
-**Authority:**
-
-* Required approvers for any standards-related changes
-* Can block changes that compromise correctness or compliance
-
-**Note:**
-Domain Stewards are not required to contribute code.
-
----
-
 ### Contributors
 
 Contributors are individuals who make meaningful contributions to the project.
@@ -136,34 +106,19 @@ The broader community includes users and supporters of odmlib.
 
 ## Decision-Making Process
 
-### Non-Domain Changes
+### Minor and Patch Changes
 
 Examples:
 
 * Refactoring
 * Performance improvements
 * Tooling or infrastructure updates
+* Define-XML structure or generation logic
+* ODM modeling decisions
 
 **Requirements:**
 
 * Approval from at least one Reviewer
-
----
-
-### Domain-Sensitive Changes
-
-Examples:
-
-* Define-XML structure or generation logic
-* ODM modeling decisions
-* Standards interpretation
-
-**Requirements:**
-
-* Approval from:
-
-  * At least one Reviewer
-  * At least one Domain Steward
 
 ---
 
@@ -178,11 +133,8 @@ Examples:
 **Requirements:**
 
 * Discussion with the community
-* Involvement of:
-
-  * At least one Maintainer
-  * At least one Domain Steward
 * Consensus is preferred
+* Final approval from at least one Maintainer
 
 ---
 
@@ -198,15 +150,7 @@ odmlib encourages contributors to grow into leadership roles.
 
 ---
 
-### Contributor → Domain Steward
-
-* Demonstrated expertise in CDISC or clinical data standards
-* Meaningful input on standards-related discussions
-* Trusted judgment on correctness and compliance
-
----
-
-### Reviewer or Domain Steward → Maintainer
+### Reviewer → Maintainer
 
 * Sustained, high-impact contributions
 * Leadership in technical or domain discussions
@@ -232,7 +176,7 @@ See `CONTRIBUTING.md` for the full contribution rubric.
 In the event of disagreement:
 
 1. Attempt resolution through open discussion
-2. Seek input from additional Reviewers or Domain Stewards
+2. Seek input from additional Reviewers
 3. Maintainers make the final decision if consensus cannot be reached
 
 ---
@@ -249,8 +193,6 @@ Changes may be proposed via:
 
 Initially, the Core Maintainers have the authority to make decisions without reviews from other roles. As the project 
 matures, the proposed decision-making process will be implemented and refined.
-
-Note, that many of the odmlib contributors are both developers and domain experts, so they may perform both roles.
 
 ---
 
