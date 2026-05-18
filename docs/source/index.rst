@@ -29,6 +29,7 @@ Dataset-XML, and CT-XML.
    odmlib.define_2_1
    odmlib.dataset_1_0_1
    odmlib.ct_1_1_1
+   odmlib.arm_1_0
    odmlib.dataset_json_1_1
    odmlib.dataframe
 

@@ -510,21 +510,21 @@ class TestPermissiveContextManagers(unittest.TestCase):
 
     def test_open_odm_permissive_true(self):
         from odmlib.context import open_odm
-        with open_odm(self.SIMPLE_XML, output_file="/dev/null",
+        with open_odm(self.SIMPLE_XML, output_file=os.devnull,
                       permissive=True) as odm:
             self.assertEqual(get_mode(), ValidationMode.PERMISSIVE)
             self.assertIsNotNone(odm.FileOID)
 
     def test_open_odm_mode_restored_on_exit(self):
         from odmlib.context import open_odm
-        with open_odm(self.SIMPLE_XML, output_file="/dev/null",
+        with open_odm(self.SIMPLE_XML, output_file=os.devnull,
                       permissive=True) as odm:
             pass
         self.assertEqual(get_mode(), ValidationMode.STRICT)
 
     def test_open_odm_custom_mode(self):
         from odmlib.context import open_odm
-        with open_odm(self.SIMPLE_XML, output_file="/dev/null",
+        with open_odm(self.SIMPLE_XML, output_file=os.devnull,
                       permissive=ValidationMode.SKIP_REQUIRED) as odm:
             self.assertEqual(get_mode(), ValidationMode.SKIP_REQUIRED)
         self.assertEqual(get_mode(), ValidationMode.STRICT)
@@ -532,20 +532,20 @@ class TestPermissiveContextManagers(unittest.TestCase):
     def test_open_odm_mode_restored_on_exception(self):
         from odmlib.context import open_odm
         with self.assertRaises(ValueError):
-            with open_odm(self.SIMPLE_XML, output_file="/dev/null",
+            with open_odm(self.SIMPLE_XML, output_file=os.devnull,
                           permissive=True) as odm:
                 raise ValueError("test")
         self.assertEqual(get_mode(), ValidationMode.STRICT)
 
     def test_open_odm_default_is_strict(self):
         from odmlib.context import open_odm
-        with open_odm(self.SIMPLE_XML, output_file="/dev/null") as odm:
+        with open_odm(self.SIMPLE_XML, output_file=os.devnull) as odm:
             self.assertEqual(get_mode(), ValidationMode.STRICT)
 
     def test_open_define_permissive_true(self):
         from odmlib.context import open_define
         define_xml = os.path.join(TEST_DATA_DIR, "defineV21-SDTM-test.xml")
-        with open_define(define_xml, output_file="/dev/null",
+        with open_define(define_xml, output_file=os.devnull,
                          permissive=True) as define:
             self.assertEqual(get_mode(), ValidationMode.PERMISSIVE)
             self.assertIsNotNone(define.FileOID)
@@ -555,7 +555,7 @@ class TestPermissiveContextManagers(unittest.TestCase):
         """open_odm with permissive=True loads a nonconformant file."""
         from odmlib.context import open_odm
         nc_xml = os.path.join(TEST_DATA_DIR, "nonconformant_odm.xml")
-        with open_odm(nc_xml, output_file="/dev/null",
+        with open_odm(nc_xml, output_file=os.devnull,
                       permissive=True) as odm:
             self.assertEqual(odm.FileOID, "ODM.NC.001")
 
