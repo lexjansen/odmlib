@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0]- 2026-05-20
+
 ### Added
+
+#### Context Manager `write_on_exit` Opt-Out
+- `odmlib/context.py`: added `write_on_exit: bool = True` parameter to
+  `ODMContext`, `DefineContext`, `open_odm`, and `open_define`. Passing
+  `write_on_exit=False` suppresses the auto-save on clean exit, enabling
+  read-only inspection through the context managers without modifying or
+  creating any file. The default (`True`) preserves the documented
+  in-place save behaviour — additive change, no compat impact.
+- `tests/test_context_managers.py`: 10 new tests covering the opt-out
+  (XML, JSON, `open_odm`, `open_define`, and the input-preservation
+  regression guard for the default-output-file footgun) plus explicit
+  default-still-writes guards.
 
 #### ODM v2.0 Model/XSD Alignment (safe subset)
 - `odmlib/data/valuesets.json`: added 12 missing `odm_2_0` value-set keys
@@ -422,5 +436,6 @@ checker = create_oid_checker("odm_1_3_2")
 - Last release using legacy `setup.py` packaging
 - See git history for details
 
-[Unreleased]: https://github.com/swhume/odmlib/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/swhume/odmlib/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/swhume/odmlib/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/swhume/odmlib/releases/tag/v0.1.4

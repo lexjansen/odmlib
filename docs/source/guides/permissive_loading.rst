@@ -167,3 +167,18 @@ Safety Notes
   serialization, the save may fail.  Call ``write_xml()`` or
   ``write_json()`` inside the ``with`` block (while permissive mode is
   still active) if you need to save an un-fixed document.
+
+- For read-only inspection — for example, loading a known-broken
+  document to enumerate its issues without risking a strict-mode save
+  failure overwriting the input — pass ``write_on_exit=False``.  No
+  file is created or modified when the ``with`` block exits, regardless
+  of ``output_file``.
+
+  .. code-block:: python
+
+      with open_odm("broken.xml", permissive=True,
+                    write_on_exit=False) as odm:
+          errors = odm.validate(collect_errors=True)
+          for err in errors:
+              print(err)
+      # broken.xml is untouched on exit

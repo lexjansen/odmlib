@@ -134,12 +134,16 @@ class TestIntegerDescriptor:
         assert ir.OrderNumber == value
 
     @given(value=st.text(min_size=1, max_size=10).filter(
-        lambda s: not s.isdigit() and not (s.startswith("-") and s[1:].isdigit()) and s.strip() != ""
+        # Reject anything Python's int() would parse: optional +/- sign,
+        # surrounding whitespace, then digits.  Previously missed leading
+        # "+" (e.g. "+0"), causing Hypothesis to find a false-positive
+        # falsifying example.
+        lambda s: s.strip() != "" and not s.strip().lstrip("+-").isdigit()
     ))
     @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
     def test_non_numeric_string_raises(self, value):
         """Non-numeric strings must raise OdmlibTypeError for integer fields."""
-        assume(not value.strip().lstrip("-").isdigit())
+        assume(not value.strip().lstrip("+-").isdigit())
         with pytest.raises(OdmlibTypeError):
             ODM.ItemRef(ItemOID="IT.TEST", OrderNumber=value, Mandatory="Yes")
 

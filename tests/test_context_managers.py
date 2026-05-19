@@ -158,6 +158,88 @@ class TestOpenDefine(TestCase):
         self.assertFalse(os.path.exists(out_path))
 
 
+class TestWriteOnExit(TestCase):
+    """Tests for the ``write_on_exit`` opt-out on the context managers.
+
+    Confirms two halves of the contract:
+    - ``write_on_exit=False`` produces no file write on clean exit (no
+      side effects on the input even when ``output_file`` defaults to it).
+    - The default (``write_on_exit=True``, or no kwarg) still writes,
+      preserving the documented in-place save behaviour.
+    """
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    # --- write_on_exit=False : no write ------------------------------------
+
+    def test_open_odm_write_on_exit_false_no_output_file_created(self):
+        """open_odm(write_on_exit=False) does not create output_file on clean exit."""
+        out_path = os.path.join(self.tmpdir, "should_not_be_written.xml")
+        with open_odm(CDASH_XML, output_file=out_path, write_on_exit=False) as odm:
+            self.assertIsNotNone(odm)
+        self.assertFalse(os.path.exists(out_path))
+
+    def test_open_odm_json_write_on_exit_false_no_output_file_created(self):
+        """open_odm(write_on_exit=False) does not create the JSON output_file."""
+        out_path = os.path.join(self.tmpdir, "should_not_be_written.json")
+        with open_odm(CDASH_JSON, output_file=out_path, write_on_exit=False) as odm:
+            self.assertIsNotNone(odm)
+        self.assertFalse(os.path.exists(out_path))
+
+    def test_open_odm_write_on_exit_false_preserves_input_in_place(self):
+        """write_on_exit=False protects the input even when output_file defaults to it.
+
+        Regression guard for the original footgun: a context manager opened
+        only to inspect would silently overwrite the input file on exit.
+        """
+        in_path = os.path.join(self.tmpdir, "inspect_me.xml")
+        shutil.copy(CDASH_XML, in_path)
+        original_mtime = os.path.getmtime(in_path)
+        original_size = os.path.getsize(in_path)
+        # No output_file -> would default to in_path; write_on_exit=False
+        # must suppress the save entirely.
+        with open_odm(in_path, write_on_exit=False) as odm:
+            self.assertIsNotNone(odm.FileOID)
+        self.assertEqual(os.path.getmtime(in_path), original_mtime)
+        self.assertEqual(os.path.getsize(in_path), original_size)
+
+    def test_open_define_write_on_exit_false_no_output_file_created(self):
+        """open_define(write_on_exit=False) does not create output_file on clean exit."""
+        out_path = os.path.join(self.tmpdir, "should_not_be_written.xml")
+        with open_define(DEFINE_21_XML, output_file=out_path,
+                         write_on_exit=False) as define:
+            self.assertIsNotNone(define)
+        self.assertFalse(os.path.exists(out_path))
+
+    # --- default (write_on_exit=True) : still writes -----------------------
+
+    def test_open_odm_default_still_writes(self):
+        """Regression guard: omitting write_on_exit preserves the documented save-on-exit default."""
+        out_path = os.path.join(self.tmpdir, "default_write.xml")
+        with open_odm(CDASH_XML, output_file=out_path) as odm:
+            self.assertIsNotNone(odm)
+        self.assertTrue(os.path.exists(out_path))
+        self.assertGreater(os.path.getsize(out_path), 0)
+
+    def test_open_odm_explicit_true_still_writes(self):
+        """write_on_exit=True (explicit) behaves identically to the default."""
+        out_path = os.path.join(self.tmpdir, "explicit_true.xml")
+        with open_odm(CDASH_XML, output_file=out_path, write_on_exit=True) as odm:
+            self.assertIsNotNone(odm)
+        self.assertTrue(os.path.exists(out_path))
+
+    def test_open_define_default_still_writes(self):
+        """Regression guard for open_define: default still writes."""
+        out_path = os.path.join(self.tmpdir, "define_default.xml")
+        with open_define(DEFINE_21_XML, output_file=out_path) as define:
+            self.assertIsNotNone(define)
+        self.assertTrue(os.path.exists(out_path))
+
+
 class TestContextManagerClasses(TestCase):
     """Unit tests for ODMContext and DefineContext class behaviour."""
 
@@ -205,3 +287,18 @@ class TestContextManagerClasses(TestCase):
         """open_define() returns a DefineContext instance."""
         ctx = open_define("define.xml")
         self.assertIsInstance(ctx, DefineContext)
+
+    def test_odmcontext_write_on_exit_default_true(self):
+        """ODMContext.write_on_exit defaults to True (unchanged historical behaviour)."""
+        ctx = ODMContext("study.xml")
+        self.assertTrue(ctx._write_on_exit)
+
+    def test_odmcontext_write_on_exit_false_stored(self):
+        """ODMContext stores write_on_exit=False when explicitly opted out."""
+        ctx = ODMContext("study.xml", write_on_exit=False)
+        self.assertFalse(ctx._write_on_exit)
+
+    def test_definecontext_write_on_exit_propagated(self):
+        """DefineContext passes write_on_exit through to its ODMContext base."""
+        ctx = DefineContext("define.xml", write_on_exit=False)
+        self.assertFalse(ctx._write_on_exit)

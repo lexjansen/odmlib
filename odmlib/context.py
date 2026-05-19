@@ -46,18 +46,24 @@ class ODMContext:
         Defaults to ``"odm_1_3_2"``.
     :param format: ``"xml"`` or ``"json"``.  Auto-detected from the
         file extension when not specified.
+    :param write_on_exit: If ``True`` (default), the document is written
+        to ``output_file`` on clean exit.  Pass ``False`` for read-only
+        inspection without writing back — no file is created or
+        modified when the ``with`` block exits.
     """
 
     def __init__(self, input_file: str,
                  output_file: Optional[str] = None,
                  model_package: str = "odm_1_3_2",
                  format: Optional[str] = None,
-                 permissive: Union[bool, _mode.ValidationMode] = False) -> None:
+                 permissive: Union[bool, _mode.ValidationMode] = False,
+                 write_on_exit: bool = True) -> None:
         self.input_file = input_file
         self.output_file = output_file or input_file
         self.model_package = model_package
         self.format = format or self._detect_format(input_file)
         self._permissive = permissive
+        self._write_on_exit = write_on_exit
         self._mode_token: Any = None
         self._odm: Any = None
 
@@ -109,7 +115,7 @@ class ODMContext:
         if self._mode_token is not None:
             _mode._validation_mode.reset(self._mode_token)
             self._mode_token = None
-        if exc_type is None and self._odm is not None:
+        if exc_type is None and self._odm is not None and self._write_on_exit:
             self._save(self._odm)
         return False  # never suppress exceptions
 
@@ -126,15 +132,19 @@ class DefineContext(ODMContext):
     :param model_package: odmlib model package name.
         Defaults to ``"define_2_1"``.
     :param format: ``"xml"`` or ``"json"``.
+    :param write_on_exit: If ``True`` (default), the document is written
+        to ``output_file`` on clean exit.  Pass ``False`` for read-only
+        inspection without writing back.
     """
 
     def __init__(self, input_file: str,
                  output_file: Optional[str] = None,
                  model_package: str = "define_2_1",
                  format: Optional[str] = None,
-                 permissive: Union[bool, _mode.ValidationMode] = False) -> None:
+                 permissive: Union[bool, _mode.ValidationMode] = False,
+                 write_on_exit: bool = True) -> None:
         super().__init__(input_file, output_file, model_package, format,
-                         permissive=permissive)
+                         permissive=permissive, write_on_exit=write_on_exit)
 
     def _load(self) -> Any:
         import odmlib.define_loader as DL
@@ -157,7 +167,8 @@ def open_odm(input_file: str,
              output_file: Optional[str] = None,
              model_package: str = "odm_1_3_2",
              format: Optional[str] = None,
-             permissive: Union[bool, _mode.ValidationMode] = False) -> ODMContext:
+             permissive: Union[bool, _mode.ValidationMode] = False,
+             write_on_exit: bool = True) -> ODMContext:
     """Open an ODM document as a context manager.
 
     :param input_file: Path to the ODM file.
@@ -167,6 +178,10 @@ def open_odm(input_file: str,
     :param permissive: If ``True``, load in fully permissive mode.
         Pass a :class:`~odmlib.mode.ValidationMode` flag combination for
         targeted relaxation.  Defaults to ``False`` (strict).
+    :param write_on_exit: If ``True`` (default), the document is written
+        to ``output_file`` on clean exit.  Pass ``False`` for read-only
+        inspection without writing back — no file is created or
+        modified when the ``with`` block exits.
     :returns: An :class:`ODMContext` instance.
 
     Example::
@@ -176,16 +191,21 @@ def open_odm(input_file: str,
 
         with open_odm("broken.xml", permissive=True) as odm:
             ...  # permissive mode active during load
+
+        # Read-only inspection — input file is never modified
+        with open_odm("study.xml", write_on_exit=False) as odm:
+            print(odm.FileOID)
     """
     return ODMContext(input_file, output_file, model_package, format,
-                     permissive=permissive)
+                     permissive=permissive, write_on_exit=write_on_exit)
 
 
 def open_define(input_file: str,
                 output_file: Optional[str] = None,
                 model_package: str = "define_2_1",
                 format: Optional[str] = None,
-                permissive: Union[bool, _mode.ValidationMode] = False) -> DefineContext:
+                permissive: Union[bool, _mode.ValidationMode] = False,
+                write_on_exit: bool = True) -> DefineContext:
     """Open a Define-XML document as a context manager.
 
     :param input_file: Path to the Define-XML file.
@@ -195,6 +215,9 @@ def open_define(input_file: str,
     :param permissive: If ``True``, load in fully permissive mode.
         Pass a :class:`~odmlib.mode.ValidationMode` flag combination for
         targeted relaxation.  Defaults to ``False`` (strict).
+    :param write_on_exit: If ``True`` (default), the document is written
+        to ``output_file`` on clean exit.  Pass ``False`` for read-only
+        inspection without writing back.
     :returns: A :class:`DefineContext` instance.
 
     Example::
@@ -204,6 +227,10 @@ def open_define(input_file: str,
 
         with open_define("broken.xml", permissive=True) as define:
             ...  # permissive mode active during load
+
+        # Read-only inspection — input file is never modified
+        with open_define("define.xml", write_on_exit=False) as define:
+            print(len(define.Study[0].MetaDataVersion[0].ItemDef))
     """
     return DefineContext(input_file, output_file, model_package, format,
-                        permissive=permissive)
+                        permissive=permissive, write_on_exit=write_on_exit)

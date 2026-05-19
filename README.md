@@ -233,6 +233,11 @@ with open_odm("study.xml") as odm:
 with open_odm("study.xml", output_file="study_updated.xml") as odm:
     odm.FileOID = "F.002"
 
+# Read-only inspection — input file is never modified
+with open_odm("study.xml", write_on_exit=False) as odm:
+    print(odm.FileOID)
+    print(len(odm.Study[0].MetaDataVersion[0].ItemDef))
+
 # Define-XML (defaults to define_2_1 model)
 with open_define("define.xml") as define:
     mdv = define.Study[0].MetaDataVersion[0]
