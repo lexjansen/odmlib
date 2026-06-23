@@ -1,2 +1,4 @@
 include tests/data/*.xml
-include test/data/*.json
+include tests/data/*.json
+recursive-include odmlib/data *.json
+recursive-include odmlib/schemas *.xsd

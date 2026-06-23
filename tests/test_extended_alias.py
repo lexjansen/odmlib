@@ -1,5 +1,8 @@
 import unittest
-import model_extended as ODM
+try:
+    from . import model_extended as ODM
+except ImportError:
+    import model_extended as ODM
 
 
 class TestExtendedAlias(unittest.TestCase):

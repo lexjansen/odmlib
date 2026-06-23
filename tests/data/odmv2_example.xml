@@ -1,0 +1,47 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ODM FileOID="ODM.COSA.DEMO" Granularity="Metadata" AsOfDateTime="2022-03-20T14:24:29.532278+00:00"
+     CreationDateTime="2022-03-20T14:24:29.532278+00:00" ODMVersion="2.0" FileType="Snapshot"
+     Originator="Sam Hume" SourceSystem="odmlib" SourceSystemVersion="0.1.4"
+     xmlns="http://www.cdisc.org/ns/odm/v2.0"
+     xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xlink="http://www.w3.org/1999/xlink">
+    <Study OID="ODM.COSA.STUDY" StudyName="COSA Example" ProtocolName="COSA Example Study">
+    <MetaDataVersion OID="MDV.EXAMPLE" Name="Coding ItemDef Example">
+<!--        <StudyEventDef OID="SE.EXAMPLE" Name="Example StudyEvent" Repeating="Yes" Type="Scheduled">-->
+<!--            <Description>-->
+<!--                <TranslatedText xml:lang="en" Type="text/plain">StudyEventDef example</TranslatedText>-->
+<!--            </Description>-->
+<!--            <ItemGroupRef ItemGroupOID="IG.ALBUMIN_BLOOD" Mandatory="Yes"/>-->
+<!--        </StudyEventDef>-->
+        <!-- Test definition -->
+        <ItemGroupDef OID="IG.ALBUMIN_BLOOD" Name="Albumin concentration in blood with unit" Repeating="No" Type="Section">
+            <ItemRef ItemOID="IT.ALBUMIN_BLOOD_CONC" Mandatory="Yes" UnitsItemOID="IT.ALBUMIN_BLOOD_UNIT"/>
+        </ItemGroupDef>
+        <!-- test details -->
+        <ItemDef OID="IT.ALBUMIN_BLOOD_CONC" Name="Albumin concentration in blood (serum or plasma)" DataType="float" >
+            <Description>
+                <TranslatedText xml:lang="en" Type="text/plain">Albumin concentration in blood (serum or plasma)</TranslatedText>
+                <TranslatedText xml:lang="fr" Type="text/plain">Concentration d'albumin dans le sang (sérum ou plasma)</TranslatedText>
+            </Description>
+            <!-- Coding, providing the expected LOINC code for the test -->
+            <Coding Code="1751-7" System="http://loinc.org" SystemName="LOINC" SystemVersion="2.72"/>
+        </ItemDef>
+        <!-- Choice of unit for the test -->
+        <ItemDef OID="IT.ALBUMIN_BLOOD_UNIT" Name="Unit for blood albumin test" DataType="text">
+            <CodeListRef CodeListOID="CL.ALBUMIN_BLOOD_UNIT"/>
+        </ItemDef>
+        <CodeList OID="CL.ALBUMIN_BLOOD_UNIT" Name="Allowed units for albumin concentration in blood" DataType="text">
+            <CodeListItem CodedValue="g/dL">
+                <Coding Code="g/dL" System="http://unitsofmeasure.org" SystemName="UCUM"/>
+            </CodeListItem>
+            <CodeListItem CodedValue="g/L">
+                <Coding Code="g/L" System="http://unitsofmeasure.org" SystemName="UCUM"/>
+            </CodeListItem>
+            <CodeListItem CodedValue="mg/mL">
+                <Coding Code="mg/mL" System="http://unitsofmeasure.org" SystemName="UCUM"/>
+            </CodeListItem>
+        </CodeList>
+    </MetaDataVersion>
+</Study>
+</ODM>

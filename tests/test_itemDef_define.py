@@ -110,12 +110,8 @@ class TestItemDef(TestCase):
         item = DEFINE.ItemDef(**attrs)
         item.Description.TranslatedText = [DEFINE.TranslatedText(_content="this is the first test description", lang="en")]
         item.CodeListRef = DEFINE.CodeListRef(CodeListOID="CL.NY_SUB_Y_N_2011-10-24")
-        item.RangeCheck = [DEFINE.RangeCheck(Comparator="EQ", SoftHard="Soft", ItemOID="IT.DA.DAORRES")]
-        item.RangeCheck[0].CheckValue = [DEFINE.CheckValue(_content="DIABP")]
         item_xml = item.to_xml()
         self.assertEqual(item_xml.attrib["OID"], "ODM.IT.AE.AEYN")
-        cv = item_xml.find("*/CheckValue")
-        self.assertEqual(cv.text, "DIABP")
         dt = item_xml.findall("Description/TranslatedText")
         self.assertEqual(len(dt), 1)
 

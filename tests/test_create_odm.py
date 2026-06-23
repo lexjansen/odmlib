@@ -11,9 +11,9 @@ ODM_XML_FILE = "./data/simple_create.xml"
 ODM_JSON_FILE = "./data/simple_create.json"
 
 
-class MyTestCase(unittest.TestCase):
+class TestCreateOdm(unittest.TestCase):
     def setUp(self) -> None:
-        current_datetime = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).isoformat()
         root = ODM.ODM(FileOID="ODM.DEMO.001", Granularity="Metadata", AsOfDateTime=current_datetime,
                        CreationDateTime=current_datetime, ODMVersion="1.3.2", FileType="Snapshot",
                        Originator="swhume", SourceSystem="odmlib", SourceSystemVersion="0.1")
@@ -91,7 +91,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(len(igd_list), 1)
 
     def test_xml_to_string(self):
-        current_datetime = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).isoformat()
         root = ODM.ODM(FileOID="ODM.DEMO.001", Granularity="Metadata", AsOfDateTime=current_datetime,
                        CreationDateTime=current_datetime, ODMVersion="1.3.2", FileType="Snapshot",
                        Originator="swhume", SourceSystem="odmlib", SourceSystemVersion="0.1")

@@ -10,7 +10,13 @@ ODM_JSON_FILE = "./data/ae_test.json"
 
 class TestCreateDataset(unittest.TestCase):
     def setUp(self) -> None:
-        current_datetime = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        # Register the Dataset-XML 1.0.1 namespace set required for write_xml().
+        # The autouse conftest fixture resets to only the base odm namespace, so
+        # we explicitly add xs, xml, and data here.
+        NS.NamespaceRegistry(prefix="xs",   uri="http://www.w3.org/2001/XMLSchema-instance")
+        NS.NamespaceRegistry(prefix="xml",  uri="http://www.w3.org/XML/1998/namespace")
+        NS.NamespaceRegistry(prefix="data", uri="http://www.cdisc.org/ns/Dataset-XML/v1.0")
+        current_datetime = datetime.datetime.now(datetime.timezone.utc).isoformat()
         self.root = ODM.ODM(FileOID="ODM.DATASET.001", AsOfDateTime=current_datetime, DatasetXMLVersion="1.0.0",
                        CreationDateTime=current_datetime, ODMVersion="1.3.2", FileType="Snapshot",
                        Originator="swhume", SourceSystem="odmlib", SourceSystemVersion="0.1")

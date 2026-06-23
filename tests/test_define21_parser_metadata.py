@@ -31,7 +31,7 @@ class TestDefine21LoaderMetaData(unittest.TestCase):
         self.assertDictEqual(self.mdv[0].attrib, mdv_dict)
         self.assertEqual(mdv_dict["{http://www.cdisc.org/ns/def/v2.1}DefineVersion"],
                          self.mdv[0].attrib["{http://www.cdisc.org/ns/def/v2.1}DefineVersion"])
-        # self.assertEqual(769, len([e.tag for e in self.mdv[0].getchildren()]))
+        # self.assertEqual(769, len([e.tag for e in self.mdv[0]]))
 
     def test_Standards(self):
         # self.assertTrue(isinstance(self.mdv[0].Standards.Standard, list))

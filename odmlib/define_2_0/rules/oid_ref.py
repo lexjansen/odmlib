@@ -1,6 +1,32 @@
+"""Manual OID ref/def checks for Define-XML 2.0.
+
+.. deprecated:: 0.2.0
+    Use :func:`odmlib.oid_generator.create_oid_checker` instead.
+    This manual implementation will be removed in v0.3.0.
+
+    Migration::
+
+        # Before (deprecated):
+        from odmlib.define_2_0.rules.oid_ref import OIDRef
+        checker = OIDRef()
+        odm.verify_oids(checker)
+
+        # After:
+        from odmlib.oid_generator import create_oid_checker
+        checker = create_oid_checker("define_2_0")
+        odm.verify_oids(checker)
+"""
+import warnings
+from odmlib.exceptions import OdmlibOIDError, OdmlibDeprecationWarning
+
 
 class OIDRef:
     def __init__(self, skip_attrs=[], skip_elems=[]):
+        warnings.warn(
+            "OIDRef is deprecated. Use odmlib.oid_generator.create_oid_checker('define_2_0') instead.",
+            OdmlibDeprecationWarning,
+            stacklevel=2,
+        )
         self.oid = {}
         self.oid_ref = {}
         self._init_oid_ref()
@@ -15,7 +41,12 @@ class OIDRef:
     def add_oid(self, oid, element):
         """ ODMLIB expects all OIDs to be unique within the scope of an ODM document """
         if oid in self.oid:
-            raise ValueError(f"OID {oid} is not unique - element {element}")
+            raise OdmlibOIDError(
+                f"OID {oid} is not unique - element {element}",
+                attribute="OID",
+                hint=f"Each OID must be unique within a MetaDataVersion. "
+                     f"OID '{oid}' is already defined in a {self.oid[oid]} element.",
+            )
         if element not in self.skip_elem:
             self.oid[oid] = element
 
@@ -34,10 +65,19 @@ class OIDRef:
             for oid in oid_set:
                 if attr not in self.skip_attr:
                     if oid not in self.oid:
-                        raise ValueError(f"OID {oid} referenced in the attribute {attr} is not found.")
+                        raise OdmlibOIDError(
+                            f"OID {oid} referenced in the attribute {attr} is not found.",
+                            attribute=attr,
+                            hint=f"Define an element with OID '{oid}' before referencing it via {attr}",
+                        )
                     elif self.ref_def.get(attr) != self.oid.get(oid):
-                        raise ValueError(f"OID reference for attribute {attr} element types do not match: "
-                                         f"{self.ref_def.get(attr)} and {self.oid.get(oid)}")
+                        raise OdmlibOIDError(
+                            f"OID reference for attribute {attr} element types do not match: "
+                            f"{self.ref_def.get(attr)} and {self.oid.get(oid)}",
+                            attribute=attr,
+                            hint=f"Attribute {attr} must reference a {self.ref_def.get(attr)} element, "
+                                 f"but OID '{oid}' points to a {self.oid.get(oid)}",
+                        )
         return True
 
     def check_unreferenced_oids(self):

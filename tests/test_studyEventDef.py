@@ -19,7 +19,7 @@ class TestStudyEventDef(TestCase):
     def test_add_bad_attribute(self):
         attrs = self.set_attributes()
         attrs["Type"] = "Rescheduled"
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             self.sed = ODM.StudyEventDef(**attrs)
 
     def test_add_form_ref(self):

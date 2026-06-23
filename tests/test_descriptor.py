@@ -2,9 +2,11 @@ import unittest
 import odmlib.odm_1_3_2.model as ODM
 import odmlib.typed as T
 import odmlib.odm_element as OE
+import odmlib.mode as mode
+from odmlib.exceptions import OdmlibRequiredAttributeError
 
 
-class TestText(OE.ODMElement):
+class TextModel(OE.ODMElement):
     Name = T.String(required=True)
     OrderNumber = T.PositiveInteger(required=False)
 
@@ -12,12 +14,12 @@ class TestText(OE.ODMElement):
 class TestDescriptor(unittest.TestCase):
 
     def test_assignment(self):
-        test = TestText(Name="test name", OrderNumber="1")
+        test = TextModel(Name="test name", OrderNumber="1")
         self.assertEqual(test.Name, "test name")
         with self.assertRaises(TypeError):
             test.OID = None
-        TestText.Name = "VariableOne"
-        self.assertEqual(TestText.Name, "VariableOne")
+        TextModel.Name = "VariableOne"
+        self.assertEqual(TextModel.Name, "VariableOne")
 
     def test_get_missing_attribute(self):
         igd = ODM.ItemGroupDef(OID="IG.VS", Name="Vital Signs", Repeating="Yes")
@@ -39,4 +41,42 @@ class TestDescriptor(unittest.TestCase):
         self.assertListEqual(itd.Alias, [None])
         with self.assertRaises(TypeError):
             itd.new_thing = "hello"
+
+    def test_required_attr_get_raises(self):
+        """Accessing an unset required attribute raises OdmlibRequiredAttributeError."""
+        # Use a fresh model class to avoid descriptor pollution from other tests
+        class _ReqModel(OE.ODMElement):
+            ReqAttr = T.String(required=True)
+            OptAttr = T.String(required=False)
+
+        with mode.permissive(mode.ValidationMode.SKIP_REQUIRED):
+            obj = _ReqModel()
+        # In strict mode, accessing unset required attr should raise
+        with self.assertRaises(OdmlibRequiredAttributeError):
+            _ = obj.ReqAttr
+
+    def test_required_attr_get_permissive_returns_none(self):
+        """In permissive mode, accessing an unset required attribute returns None."""
+        class _ReqModel2(OE.ODMElement):
+            ReqAttr = T.String(required=True)
+
+        with mode.permissive(mode.ValidationMode.SKIP_REQUIRED):
+            obj = _ReqModel2()
+            self.assertIsNone(obj.ReqAttr)
+
+    def test_optional_attr_get_default(self):
+        """Accessing an unset optional attribute returns the auto-initialized default."""
+        obj = TextModel(Name="test")
+        self.assertIsNone(obj.OrderNumber)
+
+    def test_optional_list_attr_get_default(self):
+        """Accessing an unset optional list attribute auto-initializes to []."""
+        itd = ODM.ItemDef(OID="IT.TEST", Name="Test", DataType="text")
+        self.assertListEqual(itd.Alias, [])
+
+    def test_optional_element_attr_get_default(self):
+        """Accessing an unset optional element attribute returns None (element_class() raises)."""
+        itd = ODM.ItemDef(OID="IT.TEST", Name="Test", DataType="text")
+        # CodeListRef is an optional ODMObject; accessing it auto-initializes
+        self.assertIsNone(itd.CodeListRef)
 

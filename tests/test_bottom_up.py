@@ -19,7 +19,7 @@ class TestBottomUp(unittest.TestCase):
                        schemaLocation="http://www.cdisc.org/ns/odm/v1.3 odm1-3-2.xsd",
                        Study=[study])
         self.assertEqual(root.Study[0].OID, "ODM.STUDY.001")
-        return root
+        # return root
 
     def add_study(self):
         study_name = ODM.StudyName(_content="ODM XML Test Study Name")

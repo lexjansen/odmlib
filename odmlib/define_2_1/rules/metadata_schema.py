@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from cerberus import schema_registry, validator
+from odmlib.exceptions import OdmlibConformanceError
 
 
 class ConformanceChecker(ABC):
@@ -16,10 +17,22 @@ class MetadataSchema(ConformanceChecker):
 
     def check_conformance(self, doc, schema_name):
         schema = schema_registry.get(schema_name)
+        if schema is None:
+            raise OdmlibConformanceError(
+                f"No conformance schema registered for '{schema_name}'",
+                element_type=schema_name,
+                hint=f"Register a schema for '{schema_name}' in MetadataSchema._set_metadata_registry(), "
+                     "or call validate() without conformance_checker for this model.",
+            )
         v = validator.Validator(schema)
         is_valid = v.validate(doc)
         if not is_valid:
-            raise ValueError(v.errors)
+            raise OdmlibConformanceError(
+                f"Conformance validation failed for {schema_name}: {v.errors}",
+                cerberus_errors=v.errors,
+                element_type=schema_name,
+                hint="Review the cerberus_errors attribute for a field-by-field breakdown",
+            )
         return is_valid
 
     @staticmethod
@@ -280,4 +293,19 @@ class MetadataSchema(ConformanceChecker):
             "OID": {"type": "string", "required": True},
             "GlobalVariables": {"type": "dict", "schema": schema_registry.get("GlobalVariables")},
             "MetaDataVersion": {"type": "dict", "schema": schema_registry.get("MetaDataVersion")}
+        })
+
+        schema_registry.add("ODM", {
+            "FileType": {"type": "string", "required": True, "allowed": ["Snapshot"]},
+            "FileOID": {"type": "string", "required": True},
+            "CreationDateTime": {"type": "string", "required": True},
+            "AsOfDateTime": {"type": "string"},
+            "ODMVersion": {"type": "string", "required": True, "allowed": ["1.3.2"]},
+            "Originator": {"type": "string"},
+            "SourceSystem": {"type": "string"},
+            "SourceSystemVersion": {"type": "string"},
+            "schemaLocation": {"type": "string"},
+            "Context": {"type": "string", "required": True},
+            "ID": {"type": "string"},
+            "Study": {"type": "dict", "required": True, "schema": schema_registry.get("Study")}
         })

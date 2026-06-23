@@ -109,15 +109,15 @@ class TestMetaDataVersion(TestCase):
         self.mdv.ItemGroupDef = self.add_IGD()
         self.mdv.ItemDef = self.add_ITD()
         self.mdv.CodeList = self.add_CL()
-        self.mdv.MethodDef = self.add_MD()
         self.mdv.ConditionDef = self.add_CD()
+        self.mdv.MethodDef = self.add_MD()
         mdv_xml = self.mdv.to_xml()
         self.assertEqual("MDV.TRACE-XML-ODM-01", mdv_xml.attrib["OID"])
         children = ['Protocol', 'StudyEventDef', 'StudyEventDef', 'FormDef', 'FormDef', 'ItemGroupDef', 'ItemGroupDef',
-                    'ItemDef', 'ItemDef', 'CodeList', 'MethodDef', 'ConditionDef']
-        found_list = [e.tag for e in mdv_xml.getchildren()]
+                    'ItemDef', 'ItemDef', 'CodeList', 'ConditionDef', 'MethodDef']
+        found_list = [e.tag for e in mdv_xml]
         print(found_list)
-        self.assertListEqual(children, [e.tag for e in mdv_xml.getchildren()])
+        self.assertListEqual(children, [e.tag for e in mdv_xml])
 
     def add_CD(self):
         tt1 = ODM.TranslatedText(_content="Skip the BRTHMO field when BRTHYR length NE 4", lang="en")

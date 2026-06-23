@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "odmlib"
+version = "0.2.0"
+description = "Python library for working with CDISC ODM documents and extensions"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Sam Hume", email = "swhume@gmail.com"},
+]
+keywords = ["CDISC", "ODM", "Define-XML", "Dataset-JSON", "clinical data"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "xmlschema>=1.10.0",
+    "validators>=0.18.2",
+    "Cerberus>=1.3.4",
+    "pathvalidate>=2.3.1",
+]
+
+[project.optional-dependencies]
+dataframe = [
+    "pandas>=1.5",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "hypothesis>=6.0",
+]
+docs = [
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0",
+]
+dev = [
+    "odmlib[test,docs,dataframe]",
+    "mypy>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/swhume/odmlib"
+Documentation = "https://swhume.github.io/odmlib"
+Repository = "https://github.com/swhume/odmlib"
+Issues = "https://github.com/swhume/odmlib/issues"
+
+[tool.setuptools.packages.find]
+include = ["odmlib*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+"odmlib" = [
+    "data/**/*.json",
+    "schemas/**/*.xsd",
+    "py.typed",
+    "**/*.pyi",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = ["--continue-on-collection-errors"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["odmlib"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

@@ -46,7 +46,7 @@ class TestClinicalData(TestCase):
         root = self.create_odm_document(cd)
         odm_xml = root.to_xml()
         self.assertEqual(odm_xml.attrib["FileOID"], "ODM.TEST.CD.001")
-        self.assertListEqual(["ClinicalData", "ClinicalData"], [e.tag for e in odm_xml.getchildren()])
+        self.assertListEqual(["ClinicalData", "ClinicalData"], [e.tag for e in odm_xml])
 
 
     def test_clinical_data_from_xml(self):
@@ -224,4 +224,5 @@ class TestClinicalData(TestCase):
 
     def set_datetime(self):
         """return the current datetime in ISO 8601 format"""
-        return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        # return datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
+        return datetime.datetime.now(datetime.timezone.utc).isoformat()
